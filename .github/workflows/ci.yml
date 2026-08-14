@@ -15,6 +15,12 @@ jobs:
         with:
           node-version: 22
       - run: npm install --no-audit --no-fund
+      - uses: actions/upload-artifact@v4
+        with:
+          name: generated-npm-lock
+          path: package-lock.json
+          retention-days: 1
+          if-no-files-found: error
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run test
