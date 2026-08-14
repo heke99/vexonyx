@@ -21,8 +21,9 @@ export async function updateSession(request: NextRequest) {
   const protectedPath = request.nextUrl.pathname === "/app" || request.nextUrl.pathname.startsWith("/app/");
   if (!data?.claims && protectedPath) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("next", request.nextUrl.pathname);
+    url.pathname = "/waitlist";
+    url.search = "";
+    url.searchParams.set("from", "workspace");
     return NextResponse.redirect(url);
   }
   return response;
