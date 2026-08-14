@@ -3,6 +3,7 @@ import { HeroAttackSurface } from "@/components/hero-attack-surface";
 import { HeroWorkspace } from "@/components/hero-workspace";
 import { MarketingHeader } from "@/components/marketing-header";
 import { WaitlistForm } from "@/components/waitlist-form";
+import heroStyles from "./home-hero.module.css";
 
 const proof = [
   ["Pentesting workspace", "Run authorized web, API, cloud and code security assessments with scope, evidence and review connected from the start."],
@@ -23,29 +24,29 @@ const capabilities = [
 
 export default function HomePage() {
   return <main className="marketing-page"><MarketingHeader />
-    <section className="hero hero-cyber shell">
-      <div className="hero-intro-grid">
-        <div className="hero-copy hero-copy-left">
+    <section className={`hero shell ${heroStyles.cyber}`}>
+      <div className={heroStyles.intro}>
+        <div className={`hero-copy ${heroStyles.copyLeft}`}>
           <div className="kicker"><span /> CYBERSECURITY · PENETRATION TESTING · SECURITY TOOLS</div>
-          <h1>AI platform for <em>cybersecurity and penetration testing</em></h1>
+          <h1 className={heroStyles.headline}>AI platform for <em>cybersecurity and penetration testing</em></h1>
           <p>Run authorized security assessments, analyze targets, build and use security tools, collect evidence, validate findings and generate reports in one workspace.</p>
-          <div className="hero-actions hero-actions-left">
-            <Link className="button hero-primary-cta" href="/waitlist">Join the waitlist <span>→</span></Link>
+          <div className={`hero-actions ${heroStyles.actionsLeft}`}>
+            <Link className="button" href="/waitlist">Join the waitlist <span>→</span></Link>
             <Link className="button secondary" href="#platform-preview">See the platform <span>↘</span></Link>
           </div>
-          <div className="trust-row trust-row-left">
+          <div className={`trust-row ${heroStyles.trustLeft}`}>
             <span>Authorized testing only</span><span>Evidence-driven</span><span>Report-ready</span><span>Private AI ready</span>
           </div>
-          <p className="hero-audience">Built for pentesters, security teams, independent researchers, developers and organizations running authorized security assessments.</p>
+          <p className={heroStyles.audience}>Built for pentesters, security teams, independent researchers, developers and organizations running authorized security assessments.</p>
         </div>
         <HeroAttackSurface />
       </div>
 
-      <div className="hero-capabilities" aria-label="VEXONYX capabilities">
+      <div className={heroStyles.capabilities} aria-label="VEXONYX capabilities">
         {capabilities.map((capability) => <span key={capability}>{capability}</span>)}
       </div>
 
-      <div className="hero-preview-heading" id="platform-preview">
+      <div className={heroStyles.previewHeading} id="platform-preview">
         <div><div className="section-label">VEXONYX WORKSPACE · SYNTHETIC PRODUCT DEMO</div><h2>See the security work, not just the AI.</h2></div>
         <p>Assessment progress, scope, findings, evidence and reporting stay visible in the same workspace.</p>
       </div>
