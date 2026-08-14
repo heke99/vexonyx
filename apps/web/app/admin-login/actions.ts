@@ -39,6 +39,10 @@ function validPassword(password: string) {
   return password.length >= 16 && password.length <= 128;
 }
 
+function validEmailOtp(code: string) {
+  return /^\d{6,10}$/.test(code);
+}
+
 async function authAudit(admin: AdminClient, action: string, metadata: Record<string, unknown>) {
   await admin.schema("audit").from("audit_logs").insert({
     actor_type: "system",
@@ -160,7 +164,7 @@ async function generateAndSendCode(admin: AdminClient, input: { email: string; p
   const linkType = input.purpose === "password_reset" ? "recovery" : "magiclink";
   const { data, error } = await admin.auth.admin.generateLink({ type: linkType, email: input.email });
   const code = data?.properties?.email_otp;
-  if (error || !code) return false;
+  if (error || !code || !validEmailOtp(code)) return false;
 
   const challengeId = await createChallenge(admin, input);
   const delivery = await createEmailProvider().sendAdminVerificationCode({ to: input.email, code, purpose: input.purpose });
@@ -205,9 +209,13 @@ export async function verifyAdminLoginCode(formData: FormData) {
   const admin = createAdminClient();
   if (!admin) redirect("/admin-login?error=configuration");
   const challenge = await readChallenge(admin, "login");
-  if (!challenge || !/^\d{6}$/.test(code)) {
+  if (!challenge) {
     await clearChallengeCookie();
     redirect("/admin-login?error=expired_challenge");
+  }
+  if (!validEmailOtp(code)) {
+    await failChallenge(admin, challenge, "admin.email_code_failed");
+    redirect("/admin-login?step=verify&error=invalid_code");
   }
 
   const { data: userData, error: userError } = await admin.auth.admin.getUserById(challenge.user_id);
@@ -269,7 +277,10 @@ export async function completeAdminPasswordReset(formData: FormData) {
     await clearChallengeCookie();
     redirect("/admin-login?error=expired_challenge");
   }
-  if (!/^\d{6}$/.test(code)) redirect("/admin-login?step=reset_verify&error=invalid_code");
+  if (!validEmailOtp(code)) {
+    await failChallenge(admin, challenge, "admin.password_reset_failed");
+    redirect("/admin-login?step=reset_verify&error=invalid_code");
+  }
   if (!validPassword(password) || password !== confirmPassword) redirect("/admin-login?step=reset_verify&error=password_rules");
 
   const { data: userData, error: userError } = await admin.auth.admin.getUserById(challenge.user_id);
