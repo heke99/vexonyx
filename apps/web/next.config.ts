@@ -10,11 +10,20 @@ const securityHeaders = [
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
 ];
 
+const waitlistRedirects = ["/login", "/signup", "/sign-up", "/register", "/create-account"];
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
+  },
+  async redirects() {
+    return [
+      ...waitlistRedirects.map((source) => ({ source, destination: "/waitlist", permanent: false })),
+      { source: "/invite/:path*", destination: "/waitlist", permanent: false },
+      { source: "/auth/:path*", destination: "/waitlist", permanent: false },
+    ];
   },
 };
 
