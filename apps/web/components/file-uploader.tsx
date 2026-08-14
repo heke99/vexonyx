@@ -19,7 +19,7 @@ export function FileUploader({ organizationId, projectId }: { organizationId: st
       setState({ kind: "error", message: "Files must be between 1 byte and 100 MB." });
       return;
     }
-    setState({ kind: "uploading", message: "Allocating quarantined upload…" });
+    setState({ kind: "uploading", message: "Preparing secure upload…" });
     try {
       const response = await fetch("/api/v1/files/upload-ticket", {
         method: "POST",
@@ -27,9 +27,9 @@ export function FileUploader({ organizationId, projectId }: { organizationId: st
         body: JSON.stringify({ organizationId, projectId, originalName: file.name, contentType: file.type, sizeBytes: file.size }),
       });
       const ticket = await response.json() as { error?: string; bucket?: string; path?: string; token?: string };
-      if (!response.ok || !ticket.bucket || !ticket.path || !ticket.token) throw new Error(ticket.error ?? "Unable to allocate upload.");
+      if (!response.ok || !ticket.bucket || !ticket.path || !ticket.token) throw new Error(ticket.error ?? "Unable to prepare the upload.");
 
-      setState({ kind: "uploading", message: "Uploading into quarantine…" });
+      setState({ kind: "uploading", message: "Uploading securely…" });
       const supabase = createClient();
       const { error } = await supabase.storage.from(ticket.bucket).uploadToSignedUrl(ticket.path, ticket.token, file, {
         contentType: file.type || "application/octet-stream",
@@ -37,7 +37,7 @@ export function FileUploader({ organizationId, projectId }: { organizationId: st
       });
       if (error) throw error;
       if (inputRef.current) inputRef.current.value = "";
-      setState({ kind: "success", message: "Uploaded. The artifact remains quarantined until trusted processing validates it." });
+      setState({ kind: "success", message: "Uploaded. VEXONYX will check the file before it becomes available for analysis." });
       router.refresh();
     } catch (error) {
       setState({ kind: "error", message: error instanceof Error ? error.message : "Upload failed." });
