@@ -1,7 +1,9 @@
 # Current state — 2026-08-14
 
-VEXONYX foundation is implemented on branch `agent/vexonyx-foundation-v3` and the VEXONYX Supabase project has forward migrations through `server_control_plane_api_boundary`.
+VEXONYX foundation is implemented on branch `agent/vexonyx-foundation-v3`. The VEXONYX Supabase project is migration-synced through `20260814133101_queue_claim_runtime_fix`.
 
-Implemented: marketing UI, waitlist RPC, Supabase auth foundation, organizations/projects app shell, tenant RLS, private artifact bucket, security entities, AI registry/state/checkpoints, usage/billing readiness, operations kill-switch model, superadmin incident mode, mock inference contract, CI foundation, model supply-chain placeholders.
+Implemented: premium marketing UI with explicitly synthetic hero demo; waitlist RPC; Supabase SSR auth foundation; organizations/projects/workspace UI; tenant RLS plus composite tenant referential integrity; private artifact bucket/quarantine metadata; engagement/scope/authorization/findings/evidence; AI registry/state/checkpoints; versioned tools; usage/billing readiness; operations jobs with lease-generation fencing/renewal; fail-closed tool preflight; kill-switch/incident mode; superadmin control-plane boundary; mock inference contract; deterministic npm lockfile; GitHub CI with lint/typecheck/tests/production build, clean migration replay, database lint and pgTAP runtime/RLS regression tests; Vercel Next.js monorepo configuration.
 
-Not yet implemented/production-enabled: real embeddings/GPU inference, tool gateway execution, sandbox controller execution/network enforcement, full file processing worker, report export workers, email provider, full evaluation/load/restore suites.
+Verified on 2026-08-14: tenant read/write isolation, cross-tenant FK rejection, waitlist idempotency/normalization, active-engagement admin boundary, queue stale-worker fencing, exact agent/project/engagement preflight binding, Supabase security/performance advisors after remediation, and a full green GitHub run including pgTAP. Final release gate is the same green result on the final `npm ci` head followed by production Vercel smoke verification.
+
+Not yet implemented/production-enabled by design: real embeddings/GPU inference, active tool gateway execution, sandbox controller/network enforcement, full file-processing worker, report/email workers, and later-phase model/load/backup-restore/DR evaluation suites.

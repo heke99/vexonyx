@@ -1,7 +1,11 @@
 # Blockers / external prerequisites
 
-- Vercel project/environment variables must be created before production deployment can be considered complete.
-- Server-only `SUPABASE_SECRET_KEY` is not available through the current Supabase connector; superadmin control-plane writes remain intentionally disabled without it.
-- GPU provider, model revisions/licenses/quantization/runtime images are not yet verified/provisioned.
-- Sandbox execution infrastructure and controlled network egress provider are not yet provisioned.
-- Backup restore, load tests and model/tool evals require their respective later-phase infrastructure.
+Release blockers remaining at this checkpoint:
+- Vercel preview auto-deploy stopped surfacing new branch deployments after the earlier preview-comments incompatibility. Repo configuration now disables Preview Feedback (`VERCEL_PREVIEW_FEEDBACK_ENABLED=0`), pins the Next.js workspace/output, uses locked npm dependencies, and includes public Supabase runtime configuration. Verify on the next production/preview deployment before calling Vercel green.
+- Server-only `SUPABASE_SECRET_KEY` is intentionally not committed. Superadmin privileged writes require a server-secret configured outside git before those mutations can be enabled in production.
+
+Later-phase infrastructure, not blockers for the current foundation release:
+- GPU provider plus exact model revisions/licenses/quantization/runtime images.
+- Sandbox execution infrastructure and controlled egress enforcement.
+- Full file-processing/report/email workers.
+- Model/tool/load/backup-restore/DR eval suites tied to those later services.
