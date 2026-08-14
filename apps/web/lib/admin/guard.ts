@@ -2,6 +2,7 @@ import "server-only";
 import { notFound, redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { hasVerifiedAdminSession } from "@/lib/admin/verified-session";
 
 export async function requireSuperadmin() {
   const client = await createClient();
@@ -21,6 +22,10 @@ export async function requireSuperadmin() {
 
   const admin = createAdminClient();
   if (!admin) throw new Error("Privileged server access is not configured.");
+
+  if (!await hasVerifiedAdminSession(admin, userId)) {
+    redirect("/admin-login?error=stepup_required");
+  }
 
   return { admin, userId, profile };
 }
