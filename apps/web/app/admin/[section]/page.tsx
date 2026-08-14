@@ -43,6 +43,8 @@ export default async function AdminSectionPage({params}:{params:Promise<{section
   const {section} = await params;
   const config = sections[section];
   if (!config) notFound();
+  const firstField = config.fields[0] ?? "id";
+  const lastField = config.fields[config.fields.length - 1] ?? firstField;
 
   const client = await createClient();
   const {data:claims} = await client.auth.getClaims();
@@ -68,9 +70,9 @@ export default async function AdminSectionPage({params}:{params:Promise<{section
     <div className="shell" style={{paddingTop:28,display:"flex",alignItems:"center",justifyContent:"space-between",gap:20}}><Brand/><Link href="/admin">Admin overview</Link></div>
     <section className="shell content-hero"><div className="section-label">SUPERADMIN</div><h1>{config.title}</h1><p>{config.description}</p></section>
     <section className="shell" style={{paddingBottom:100}}>
-      <nav style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:20}} aria-label="Admin sections">{nav.map((item)=><Link className={item===section?"button button-small":"button button-small secondary"} href={`/admin/${item}`} key={item}>{sections[item].title}</Link>)}</nav>
+      <nav style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:20}} aria-label="Admin sections">{nav.map((item)=>{ const itemConfig = sections[item]; return <Link className={item===section?"button button-small":"button button-small secondary"} href={`/admin/${item}`} key={item}>{itemConfig?.title ?? item}</Link>; })}</nav>
       <article className="workspace-card"><header><h2>{config.title}</h2><span>{count} records</span></header>
-        {!admin ? <div className="empty-state"><div><b>Privileged server access is not configured.</b><p>Protected administration data remains unavailable.</p></div></div> : loadError ? <div className="empty-state"><div><b>This section could not be loaded.</b><p>No records were changed.</p></div></div> : rows.length ? rows.map((row,index)=><div className="project-row" key={String(row.id ?? `${section}-${index}`)}><div><b>{display(row[config.fields[0]])}</b><small>{config.fields.slice(1,Math.max(2,config.fields.length-1)).map((field)=>`${field.replaceAll("_"," ")}: ${display(row[field])}`).join(" · ")}</small></div><span>{display(row[config.fields.at(-1) ?? config.fields[0]])}</span></div>) : <div className="empty-state"><div><b>No records yet.</b><p>This is expected before the corresponding beta capability is used.</p></div></div>}
+        {!admin ? <div className="empty-state"><div><b>Privileged server access is not configured.</b><p>Protected administration data remains unavailable.</p></div></div> : loadError ? <div className="empty-state"><div><b>This section could not be loaded.</b><p>No records were changed.</p></div></div> : rows.length ? rows.map((row,index)=><div className="project-row" key={String(row.id ?? `${section}-${index}`)}><div><b>{display(row[firstField])}</b><small>{config.fields.slice(1,Math.max(2,config.fields.length-1)).map((field)=>`${field.replaceAll("_"," ")}: ${display(row[field])}`).join(" · ")}</small></div><span>{display(row[lastField])}</span></div>) : <div className="empty-state"><div><b>No records yet.</b><p>This is expected before the corresponding beta capability is used.</p></div></div>}
       </article>
     </section>
   </main>;
