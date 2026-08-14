@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 
 const read = (path) => fs.readFileSync(new URL(path, import.meta.url), "utf8");
+const authMigration = "../../../supabase/migrations/20260814210224_admin_password_email_otp.sql";
 
 test("Superadmin password login resolves identity from private database configuration", () => {
   const action = read("../app/admin-login/actions.ts");
@@ -56,7 +57,7 @@ test("legacy direct magic-link confirmation can no longer create an admin sessio
 });
 
 test("password-only Supabase sessions do not receive Superadmin database bypasses", () => {
-  const migration = read("../../../supabase/migrations/20260814204800_admin_password_email_otp.sql");
+  const migration = read(authMigration);
   assert.match(migration, /revoke execute on function operations\.is_superadmin\(\) from authenticated/i);
   assert.match(migration, /create or replace function operations\.is_org_member/);
   assert.match(migration, /create or replace function operations\.has_org_write/);
@@ -69,7 +70,7 @@ test("password-only Supabase sessions do not receive Superadmin database bypasse
 
 test("public signup remains closed while auth challenges and verified sessions are service-role only", () => {
   const identityMigration = read("../../../supabase/migrations/20260814200326_private_superadmin_identity_registry.sql");
-  const challengeMigration = read("../../../supabase/migrations/20260814204800_admin_password_email_otp.sql");
+  const challengeMigration = read(authMigration);
   assert.match(identityMigration, /vexonyx_block_auth_user_creation_waitlist/);
   assert.match(challengeMigration, /security\.admin_auth_challenges/);
   assert.match(challengeMigration, /security\.admin_verified_sessions/);
