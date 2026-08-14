@@ -29,7 +29,6 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
   const users = (rows ?? []) as Array<Record<string, unknown>>;
   const count = Number(countData ?? users.length);
   const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE));
-  const now = Date.now();
 
   return (
     <div className="admin-page">
@@ -46,8 +45,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
       <section className="admin-card">
         {users.length ? <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>User</th><th>Access</th><th>Organizations</th><th>Created</th><th>Last sign-in</th><th>Actions</th></tr></thead><tbody>
           {users.map((row) => {
-            const bannedUntil = row.banned_until ? new Date(String(row.banned_until)).getTime() : 0;
-            const suspended = bannedUntil > now;
+            const suspended = Boolean(row.is_suspended);
             const isSuperadmin = Boolean(row.is_superadmin);
             return <tr key={String(row.id)}>
               <td><b>{String(row.display_name || row.email || row.id)}</b><small>{String(row.email || row.id)}</small></td>
