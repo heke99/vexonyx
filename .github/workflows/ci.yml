@@ -12,10 +12,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
+          package-manager-cache: false
       - run: npm install --no-audit --no-fund
       - name: Commit generated npm lockfile once
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/agent/')
@@ -39,13 +40,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: supabase/setup-cli@v1
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
         with:
-          version: latest
-      - run: supabase init || true
-      - run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor
-      - run: supabase db reset
-      - run: supabase db lint --level error
-      - run: supabase test db
-      - run: supabase status
+          node-version: 22
+          package-manager-cache: false
+      - run: npm install --no-audit --no-fund
+      - run: npx supabase init || true
+      - run: npx supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor
+      - run: npx supabase db reset
+      - run: npx supabase db lint --level error
+      - run: npx supabase test db
+      - run: npx supabase status
