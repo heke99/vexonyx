@@ -1,21 +1,9 @@
 {
-  "version": 1,
   "project": "VEXONYX",
-  "status": "NOT_STARTED",
-  "active_work_item": null,
-  "active_subtask": null,
-  "branch": null,
-  "base_sha": null,
-  "head_sha": null,
-  "last_verified_at": null,
-  "exact_next_action": null,
-  "blockers": [],
-  "verification": {
-    "typecheck": "NOT_RUN",
-    "lint": "NOT_RUN",
-    "tests": "NOT_RUN",
-    "build": "NOT_RUN",
-    "database": "NOT_RUN",
-    "security": "NOT_RUN"
-  }
+  "date": "2026-08-14",
+  "branch": "agent/vexonyx-foundation-v3",
+  "phase": "foundation-marketing-workspace-mock-ai",
+  "status": "IMPLEMENTED_PENDING_CI_DEPLOY_VERIFY",
+  "supabaseMigrationHead": "20260814125944",
+  "next": ["run GitHub CI", "create/deploy Vercel project", "verify waitlist/auth smoke tests", "begin retrieval/file-processing phase"]
 }

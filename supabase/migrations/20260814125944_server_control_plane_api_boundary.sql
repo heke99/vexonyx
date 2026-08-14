@@ -1,0 +1,1 @@
+alter role authenticator set pgrst.db_schemas='public,app,launch,ai,security,artifacts,reports,usage,billing,operations,audit'; revoke all on schema operations,audit from public,anon,authenticated; grant usage on schema operations,audit to service_role; notify pgrst,'reload config';

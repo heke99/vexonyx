@@ -1,0 +1,12 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "installCommand": "npm ci --no-audit --no-fund",
+  "buildCommand": "npm run build",
+  "outputDirectory": "apps/web/.next",
+  "env": {
+    "VERCEL_PREVIEW_FEEDBACK_ENABLED": "0",
+    "NEXT_PUBLIC_SUPABASE_URL": "https://trwwicnqnudllbeldsib.supabase.co",
+    "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_ZhPDqGIq3fmgvkVqrHo8zQ_KclWcAmC"
+  }
+}

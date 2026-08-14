@@ -1,0 +1,14 @@
+create index if not exists api_clients_created_by_idx on app.api_clients(created_by);
+create index if not exists api_keys_created_by_idx on app.api_keys(created_by);
+create index if not exists sandbox_jobs_engagement_idx on operations.sandbox_jobs(engagement_id);
+create index if not exists sandbox_jobs_project_idx on operations.sandbox_jobs(project_id);
+create index if not exists system_state_updated_by_idx on operations.system_state(updated_by) where updated_by is not null;
+create index if not exists report_exports_version_idx on reports.report_exports(report_version_id) where report_version_id is not null;
+create index if not exists report_exports_requested_by_idx on reports.report_exports(requested_by);
+create index if not exists report_exports_storage_file_idx on reports.report_exports(storage_file_id) where storage_file_id is not null;
+create index if not exists report_templates_created_by_idx on reports.report_templates(created_by);
+create index if not exists approval_requests_engagement_idx on security.approval_requests(engagement_id) where engagement_id is not null;
+create index if not exists approval_requests_project_idx on security.approval_requests(project_id);
+create index if not exists authorization_project_idx on security.authorization_records(project_id);
+create index if not exists engagement_scope_project_idx on security.engagement_scope(project_id);
+create index if not exists finding_evidence_project_idx on security.finding_evidence(project_id);

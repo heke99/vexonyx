@@ -1,0 +1,3 @@
+import test from "node:test";import assert from "node:assert/strict";import fs from "node:fs";
+test("marketing hero identifies authorized security positioning",()=>{const page=fs.readFileSync(new URL("../app/page.tsx",import.meta.url),"utf8");assert.match(page,/AI agents for modern security teams/);assert.match(page,/synthetic demo/i)});
+test("browser has no GPU endpoint contract",()=>{const files=[new URL("../app/page.tsx",import.meta.url),new URL("../components/mock-chat.tsx",import.meta.url)];for(const file of files){const text=fs.readFileSync(file,"utf8");assert.doesNotMatch(text,/gpu.*https?:\/\//i)}});
