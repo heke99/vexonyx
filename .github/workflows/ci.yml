@@ -7,8 +7,6 @@ permissions:
   contents: read
 jobs:
   app:
-    permissions:
-      contents: write
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -16,18 +14,8 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 22
-          package-manager-cache: false
-      - run: npm install --no-audit --no-fund
-      - name: Commit root-detection lockfile
-        if: github.event_name == 'push' && github.ref == 'refs/heads/agent/vercel-root-framework-detection-fix'
-        run: |
-          if [ -n "$(git status --porcelain package-lock.json)" ]; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add package-lock.json
-            git commit -m "chore: lock root Next detection"
-            git push origin HEAD:${GITHUB_REF_NAME}
-          fi
+          cache: npm
+      - run: npm ci --no-audit --no-fund
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run test
@@ -44,8 +32,8 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 22
-          package-manager-cache: false
-      - run: npm install --no-audit --no-fund
+          cache: npm
+      - run: npm ci --no-audit --no-fund
       - run: npx supabase init || true
       - run: npx supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor
       - run: npx supabase db reset
