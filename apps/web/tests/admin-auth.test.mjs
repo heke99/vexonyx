@@ -12,6 +12,16 @@ test("admin magic-link access resolves identity from private database configurat
   assert.doesNotMatch(action, /info@vexonyx\.com/i);
 });
 
+test("admin token-hash confirmation is browser-independent", () => {
+  const confirm = read("../app/admin-confirm/route.ts");
+  assert.match(confirm, /token_hash:\s*tokenHash/);
+  assert.match(confirm, /type:\s*"email"/);
+  assert.match(confirm, /!data\.session/);
+  assert.doesNotMatch(confirm, /exchangeCodeForSession/);
+  assert.doesNotMatch(confirm, /code_verifier/i);
+  assert.doesNotMatch(confirm, /type:\s*"magiclink"/);
+});
+
 test("public signup remains closed while operator bootstrap uses a private registry", () => {
   const migration = read("../../../supabase/migrations/20260814200326_private_superadmin_identity_registry.sql");
   assert.match(migration, /security\.superadmin_identities/);
