@@ -1,10 +1,11 @@
+import { MarketingFooter } from "@/components/marketing-footer";
 import { MarketingHeader } from "@/components/marketing-header";
 import { WaitlistForm } from "@/components/waitlist-form";
 
 const audience = [
   ["Independent", "Researchers, students, developers and security professionals can join directly."],
   ["Teams", "Security teams, consultancies, startups and larger organizations can register too."],
-  ["Private beta", "Everyone verifies their email before referral access becomes active."],
+  ["Waitlist only", "No VEXONYX account is created at this stage. Login, signup and team invitations stay closed until access opens."],
 ] as const;
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ ref?: string }> }) {
@@ -15,9 +16,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ r
     <main className="content-page">
       <MarketingHeader />
       <section className="shell content-hero">
-        <div className="section-label">PRIVATE BETA</div>
+        <div className="section-label">PRIVATE BETA · WAITLIST ONLY</div>
         <h1>Join VEXONYX as yourself or with your team.</h1>
-        <p>VEXONYX is not limited to companies. Independent researchers, students, developers, security professionals and company teams can all join the waitlist.</p>
+        <p>Independent researchers, developers, pentesters, security professionals and company teams can join. Verify your email to activate your waitlist place; this does not create a product account.</p>
       </section>
       <section className="shell" style={{ paddingBottom: 120 }}>
         <div className="content-body" style={{ paddingBottom: 28 }}>
@@ -25,6 +26,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ r
         </div>
         <div style={{ maxWidth: 680 }}><WaitlistForm referralCode={referralCode} /></div>
       </section>
+      <MarketingFooter />
     </main>
   );
 }
