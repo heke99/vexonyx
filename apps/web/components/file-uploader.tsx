@@ -26,8 +26,8 @@ export function FileUploader({ organizationId, projectId }: { organizationId: st
         headers: { "content-type": "application/json", "idempotency-key": crypto.randomUUID() },
         body: JSON.stringify({ organizationId, projectId, originalName: file.name, contentType: file.type, sizeBytes: file.size }),
       });
-      const ticket = await response.json() as { error?: string; bucket?: string; path?: string; token?: string };
-      if (!response.ok || !ticket.bucket || !ticket.path || !ticket.token) throw new Error(ticket.error ?? "Unable to prepare the upload.");
+      const ticket = await response.json() as { error?: string; fileId?: string; bucket?: string; path?: string; token?: string };
+      if (!response.ok || !ticket.fileId || !ticket.bucket || !ticket.path || !ticket.token) throw new Error(ticket.error ?? "Unable to prepare the upload.");
 
       setState({ kind: "uploading", message: "Uploading securely…" });
       const supabase = createClient();
@@ -36,6 +36,16 @@ export function FileUploader({ organizationId, projectId }: { organizationId: st
         upsert: false,
       });
       if (error) throw error;
+
+      setState({ kind: "uploading", message: "Preparing file checks…" });
+      const completeResponse = await fetch("/api/v1/files/complete", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ organizationId, projectId, fileId: ticket.fileId }),
+      });
+      const completed = await completeResponse.json() as { error?: string };
+      if (!completeResponse.ok) throw new Error(completed.error ?? "The upload finished but file checking could not be prepared.");
+
       if (inputRef.current) inputRef.current.value = "";
       setState({ kind: "success", message: "Uploaded. VEXONYX will check the file before it becomes available for analysis." });
       router.refresh();
