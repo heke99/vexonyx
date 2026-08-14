@@ -124,6 +124,29 @@ export async function setUserSuspension(formData: FormData) {
   revalidatePath("/admin");
 }
 
+export async function changeAdminPassword(formData: FormData) {
+  const { admin, userId } = await requireSuperadmin();
+  const password = String(formData.get("password") ?? "");
+  const confirmPassword = String(formData.get("confirm_password") ?? "");
+  if (password.length < 16 || password.length > 128 || password !== confirmPassword) {
+    redirect("/admin/account?error=password_rules");
+  }
+
+  const client = await createClient();
+  const { data: claims } = await client.auth.getClaims();
+  const issuedAt = Number(claims?.claims?.iat ?? 0);
+  if (!issuedAt || Math.floor(Date.now() / 1000) - issuedAt > 30 * 60) {
+    redirect("/admin-login?error=reauth_required");
+  }
+
+  const { error } = await admin.auth.admin.updateUserById(userId, { password });
+  if (error) redirect("/admin/account?error=password_update");
+
+  await audit(admin, userId, "admin.password_changed", "admin_account", userId, { sessions_revoked: true });
+  await client.auth.signOut({ scope: "global" });
+  redirect("/admin-login?password=updated");
+}
+
 export async function signOutAdmin() {
   await requireSuperadmin();
   const client = await createClient();
