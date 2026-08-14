@@ -7,6 +7,7 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { createEmailProvider } from "@/lib/email/provider";
+import { createVerifiedAdminSession, revokeAllVerifiedAdminSessions } from "@/lib/admin/verified-session";
 
 const ADMIN_CHALLENGE_COOKIE = "vx_admin_challenge";
 const CHALLENGE_TTL_SECONDS = 10 * 60;
@@ -223,6 +224,7 @@ export async function verifyAdminLoginCode(formData: FormData) {
     redirect("/admin-login?step=verify&error=invalid_code");
   }
 
+  await createVerifiedAdminSession(admin, challenge.user_id);
   await consumeChallenge(admin, challenge.id);
   await authAudit(admin, "admin.login_succeeded", { user_id: challenge.user_id, method: "password_plus_email_otp" });
   redirect("/admin");
@@ -284,14 +286,15 @@ export async function completeAdminPasswordReset(formData: FormData) {
     redirect("/admin-login?step=reset_verify&error=invalid_code");
   }
 
-  const { error: updateError } = await client.auth.updateUser({ password });
+  const { error: updateError } = await admin.auth.admin.updateUserById(challenge.user_id, { password });
   if (updateError) {
     await failChallenge(admin, challenge, "admin.password_reset_failed");
     redirect("/admin-login?step=reset_verify&error=password_update");
   }
 
+  await revokeAllVerifiedAdminSessions(admin, challenge.user_id);
   await consumeChallenge(admin, challenge.id);
-  await authAudit(admin, "admin.password_reset_completed", { user_id: challenge.user_id });
+  await authAudit(admin, "admin.password_reset_completed", { user_id: challenge.user_id, sessions_revoked: true });
   await client.auth.signOut({ scope: "global" });
   redirect("/admin-login?password=updated");
 }
