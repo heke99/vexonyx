@@ -20,6 +20,9 @@ function errorMessage(error: string | null) {
     case "password_update": return "The password could not be updated. Request a new reset code and try again.";
     case "delivery": return "The verification email could not be delivered right now. Try again shortly.";
     case "configuration": return "Administrator authentication is temporarily unavailable.";
+    case "legacy_link": return "Direct administrator sign-in links are no longer accepted. Sign in with your password and email verification code.";
+    case "stepup_required": return "Complete password and email verification before opening the Superadmin console.";
+    case "reauth_required": return "For this security change, sign in again with your password and email verification code.";
     default: return null;
   }
 }
