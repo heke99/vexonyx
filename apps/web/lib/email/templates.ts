@@ -68,3 +68,21 @@ export function organizationInvitationTemplate(input: { organizationName: string
     html: layout({ preview, eyebrow: "TEAM INVITATION", title: `Join ${input.organizationName}`, body: `<p style="margin:0;">You’ve been invited to join <strong style="color:${BRAND.text};">${organization}</strong> on VEXONYX as <strong style="color:${BRAND.text};">${role}</strong>. This invitation can only be accepted by this email address.</p>`, ctaLabel: "Accept invitation", ctaUrl: input.invitationUrl, footnote: "Team invitations remain disabled during the public waitlist phase and will only be used after account access opens." }),
   };
 }
+
+export function adminMagicLinkTemplate(input: { loginUrl: string }): EmailTemplate {
+  const preview = "Secure sign-in link for the VEXONYX Superadmin console.";
+  return {
+    subject: "VEXONYX Superadmin sign-in",
+    preview,
+    text: `A secure sign-in was requested for the VEXONYX Superadmin console.\n\nSign in: ${input.loginUrl}\n\nUse this link only if you requested access to admin.vexonyx.com. If you did not request it, ignore this email and no session will be created.\n\nVEXONYX is operated by ${OPERATOR}, Wyoming, United States. Contact: ${CONTACT}`,
+    html: layout({
+      preview,
+      eyebrow: "SUPERADMIN · SECURE ACCESS",
+      title: "Sign in to VEXONYX Admin",
+      body: `<p style="margin:0;">A secure administrator sign-in was requested for <strong style="color:${BRAND.text};">admin.vexonyx.com</strong>. This link is intended only for the VEXONYX operator account.</p>`,
+      ctaLabel: "Open Superadmin",
+      ctaUrl: input.loginUrl,
+      footnote: "If you did not request this administrator sign-in, ignore this message. Never forward administrator sign-in links.",
+    }),
+  };
+}
