@@ -69,7 +69,7 @@ export function WaitlistForm({ compact = false, referralCode }: { compact?: bool
     <form className={compact ? "waitlist-form compact" : "waitlist-form"} onSubmit={submit}>
       {!compact ? (
         <fieldset className={styles.choice}>
-          <legend>I'm joining as</legend>
+          <legend>I&apos;m joining as</legend>
           <div className={styles.grid}>
             <label className={`${styles.option} ${signupType === "individual" ? styles.optionSelected : ""}`}>
               <input type="radio" name="signup_type" value="individual" checked={signupType === "individual"} onChange={() => setSignupType("individual")} />
