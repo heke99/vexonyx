@@ -28,6 +28,18 @@ test("successful password verification requires a browser-bound email OTP challe
   assert.match(action, /createVerifiedAdminSession/);
 });
 
+test("admin OTP handling accepts the production-generated eight-digit code without hardcoding six digits", () => {
+  const action = read("../app/admin-login/actions.ts");
+  const page = read("../app/admin-login/page.tsx");
+  assert.ok(action.includes("/^\\d{6,10}$/"));
+  assert.match(action, /!validEmailOtp\(code\)/);
+  assert.ok(page.includes('pattern="[0-9]{6,10}"'));
+  assert.ok(page.includes("minLength={6}"));
+  assert.ok(page.includes("maxLength={10}"));
+  assert.doesNotMatch(page, /pattern="\[0-9\]\{6\}"/);
+  assert.match("12345678", /^\d{6,10}$/);
+});
+
 test("every Superadmin view requires the separate verified email step-up session", () => {
   const guard = read("../lib/admin/guard.ts");
   const verifiedSession = read("../lib/admin/verified-session.ts");
