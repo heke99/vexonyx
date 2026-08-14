@@ -14,7 +14,6 @@ export function MarketingHeader() {
         <nav className="desktop-nav" aria-label="Primary">{links.map(([label, href]) => <Link href={href} key={href}>{label}</Link>)}</nav>
         <div className="header-actions">
           <span className={styles.securityBadge}>✓ Authorized testing</span>
-          <Link className="text-link" href="/login">Log in</Link>
           <Link className="button button-small" href="/waitlist">Join waitlist</Link>
         </div>
       </div>

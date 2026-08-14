@@ -10,11 +10,37 @@ const securityHeaders = [
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
 ];
 
+if (process.env.VERCEL_ENV === "production") {
+  const required = [
+    "NEXT_PUBLIC_APP_URL",
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+    "SUPABASE_SECRET_KEY",
+    "RESEND_API_KEY",
+  ] as const;
+  const missing: string[] = required.filter((name) => !process.env[name]);
+  if (!process.env.WAITLIST_FROM_EMAIL && !process.env.TRANSACTIONAL_FROM_EMAIL) {
+    missing.push("WAITLIST_FROM_EMAIL or TRANSACTIONAL_FROM_EMAIL");
+  }
+  if (missing.length) {
+    throw new Error(`VEXONYX production configuration is incomplete. Missing: ${missing.join(", ")}`);
+  }
+}
+
+const waitlistRedirects = ["/login", "/signup", "/sign-up", "/register", "/create-account"];
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
+  },
+  async redirects() {
+    return [
+      ...waitlistRedirects.map((source) => ({ source, destination: "/waitlist", permanent: false })),
+      { source: "/invite/:path*", destination: "/waitlist", permanent: false },
+      { source: "/auth/:path*", destination: "/waitlist", permanent: false },
+    ];
   },
 };
 
