@@ -55,7 +55,7 @@ const scenarios: readonly Scenario[] = [
   },
 ];
 
-const fallbackScenario = scenarios[0];
+const fallbackScenario = scenarios[0]!;
 
 export function HeroWorkspace() {
   const [scenarioIndex, setScenarioIndex] = useState(0);
