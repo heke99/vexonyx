@@ -1,0 +1,3 @@
+# Compromised API key
+
+Revoke or rotate the key immediately, disable affected integration access, and invalidate active credentials where supported. Review API request/audit history by hashed key identity, organization, request ID and time window. Look for scope expansion, exports or unusual volume. Issue a replacement only after the cause is addressed; never log or paste the replacement into incident notes.

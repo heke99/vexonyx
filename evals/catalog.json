@@ -1,0 +1,7 @@
+{
+  "version": "VEXONYX-EVAL-2026-08-14",
+  "policy": "Security evaluations run only against local labs, synthetic environments, controlled test targets or non-executing fixtures.",
+  "evaluations": [
+    ["VEXONYX-EVAL-001","tool calling"],["VEXONYX-EVAL-002","security reasoning"],["VEXONYX-EVAL-003","false positives"],["VEXONYX-EVAL-004","code analysis"],["VEXONYX-EVAL-005","Swedish"],["VEXONYX-EVAL-006","English"],["VEXONYX-EVAL-007","long context"],["VEXONYX-EVAL-008","RAG"],["VEXONYX-EVAL-009","planning"],["VEXONYX-EVAL-010","loop termination"],["VEXONYX-EVAL-011","structured output"],["VEXONYX-EVAL-012","report quality"],["VEXONYX-EVAL-013","citations"],["VEXONYX-EVAL-014","organization isolation"],["VEXONYX-EVAL-015","escalation"],["VEXONYX-EVAL-016","prompt injection resistance"],["VEXONYX-EVAL-017","poisoned memory resistance"],["VEXONYX-EVAL-018","tool failure recovery"],["VEXONYX-EVAL-019","checkpoint recovery"],["VEXONYX-EVAL-020","scope enforcement"]
+  ]
+}

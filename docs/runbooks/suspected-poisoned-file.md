@@ -1,0 +1,3 @@
+# Suspected poisoned file
+
+Move the file back to blocked/quarantined processing state, stop new retrieval from its chunks, and preserve original hash/provenance. Invalidate dependent candidate memory and derived context where applicable. Review parser/scanner results and related findings without executing embedded instructions. After classification, delete, replace or safely reprocess the source and recompute dependent chunks/memory.

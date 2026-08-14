@@ -1,0 +1,3 @@
+# Storage outage
+
+Keep database metadata authoritative and prevent new upload tickets if object storage cannot safely accept data. Existing project metadata, notes and findings should remain available. Do not mark files ready when binaries cannot be read. Resume file jobs idempotently after storage recovery, verify content hash and signed-URL behavior, and reconcile orphaned metadata/objects without exposing private buckets.

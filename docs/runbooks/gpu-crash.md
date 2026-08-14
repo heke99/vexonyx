@@ -1,0 +1,3 @@
+# GPU crash
+
+Applies only after GPU rollout. Stop routing new work to the failed deployment, preserve generation/agent state in PostgreSQL, and let queued work remain queued rather than time out. Capture deployment/model/runtime versions, restart or reprovision through the GPU provider adapter, run health plus synthetic inference, and only then restore traffic. Escalated jobs may fall back only through configured routing rules.
