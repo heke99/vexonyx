@@ -8,7 +8,7 @@ const groups = [
   { label: "Overview", items: [["/admin", "Command center", "⌂"]] },
   { label: "Growth", items: [["/admin/waitlist", "Waitlist", "↗"],["/admin/users", "Users", "◎"],["/admin/organizations", "Organizations", "◇"]] },
   { label: "Product", items: [["/admin/usage", "Usage & cost", "◫"],["/admin/inference", "AI requests", "✦"],["/admin/agents", "Agent runs", "⌁"],["/admin/jobs", "Jobs", "≋"],["/admin/findings", "Findings", "△"],["/admin/reports", "Reports", "▤"]] },
-  { label: "Security", items: [["/admin/security", "Approvals", "✓"],["/admin/audit", "Audit log", "⌕"]] },
+  { label: "Security", items: [["/admin/account", "Account security", "◌"],["/admin/security", "Approvals", "✓"],["/admin/audit", "Audit log", "⌕"]] },
   { label: "Operations", items: [["/admin/platform", "Platform", "◉"],["/admin/feature-flags", "Feature flags", "⚑"],["/admin/models", "Model registry", "◈"],["/admin/deployments", "Deployments", "⬡"]] },
 ] as const;
 
