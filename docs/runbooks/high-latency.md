@@ -1,0 +1,3 @@
+# High latency
+
+Split diagnosis by web/API, database, queue, inference and storage. Compare p50/p95/p99, DB latency/connections, queue age and AI TTFT. Protect interactive work by pausing low-priority background queues where appropriate. Do not cache permissions, authorization or scope to hide latency. After remediation verify cached navigation, normal reads/mutations and chat acknowledgement against the published targets.

@@ -1,0 +1,3 @@
+# Compromised model endpoint
+
+Immediately remove the endpoint from routing and rotate service credentials. Treat all returned model output as untrusted; models never hold authority to change permissions/scope. Identify requests routed to the endpoint, preserve version/deployment metadata, and evaluate possible data exposure. Re-enable only with a fresh trusted deployment, service identity and successful security/evaluation checks.

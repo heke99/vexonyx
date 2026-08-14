@@ -1,2 +1,10 @@
 import { ContentPage } from "@/components/content-page";
-export default function Page(){return <ContentPage label="PRODUCT" title="One operating environment for security work." intro="VEXONYX connects projects, context, agents, findings, evidence and reports without turning the product into a single-model wrapper." cards={[{title:"Project context",body:"Keep targets, authorizations, files, notes and findings bound to the same tenant and project."},{title:"Persistent agents",body:"Runs are designed around explicit states, budgets, idempotency and checkpoints so work can survive disconnects and worker restarts."},{title:"Evidence first",body:"Preserve source artifacts, hashes, versions and tool provenance as findings move through review."},{title:"Provider independent",body:"Models, queues, storage and GPU providers sit behind VEXONYX interfaces rather than leaking into product contracts."}]}/>}
+
+export default function Page(){
+  return <ContentPage label="PRODUCT" title="One workspace for serious security work." intro="VEXONYX connects projects, context, agents, findings, evidence and reports so security teams can move from authorized scope to a reviewable result without losing context." cards={[
+    {title:"Project context",body:"Keep targets, authorizations, files, notes and findings connected to the same organization and project."},
+    {title:"Persistent agents",body:"Follow long-running work with visible progress, approvals and recovery so a browser refresh does not erase the job."},
+    {title:"Evidence first",body:"Preserve source files, hashes, versions and observations as findings move through review."},
+    {title:"Private AI",body:"VEXONYX is designed so AI can be replaced or upgraded without moving customer workflow or project history."}
+  ]}/>;
+}

@@ -1,0 +1,3 @@
+# Sandbox failure
+
+Applies when isolated execution is enabled. Stop new sandbox scheduling if isolation, cleanup or network policy is uncertain. Cancel/drain affected jobs, preserve tool-run records and raw artifacts already ingested, and destroy suspect environments. Verify image digest, resource limits, network restrictions and cleanup tests before re-enabling. Never move tools onto Vercel or the inference host as a workaround.
