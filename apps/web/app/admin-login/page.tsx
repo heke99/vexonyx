@@ -61,8 +61,9 @@ export default async function AdminLoginPage({ searchParams }: { searchParams: P
           <form className="auth-form" action={verifyAdminLoginCode}>
             <label>
               <span>EMAIL VERIFICATION CODE</span>
-              <input name="code" type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required placeholder="000000" />
+              <input name="code" type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6,10}" minLength={6} maxLength={10} required placeholder="Enter the code from email" />
             </label>
+            <p className="auth-foot" style={{ margin: 0 }}>Enter the full numeric code exactly as shown in the VEXONYX email.</p>
             <button className="button" type="submit">Verify and open Superadmin</button>
             <a href="/admin-login" className="button secondary">Start over</a>
             {message ? <p className="form-error">{message}</p> : null}
@@ -71,8 +72,9 @@ export default async function AdminLoginPage({ searchParams }: { searchParams: P
           <form className="auth-form" action={completeAdminPasswordReset}>
             <label>
               <span>PASSWORD RESET CODE</span>
-              <input name="code" type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required placeholder="000000" />
+              <input name="code" type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6,10}" minLength={6} maxLength={10} required placeholder="Enter the code from email" />
             </label>
+            <p className="auth-foot" style={{ margin: 0 }}>Enter the full numeric code exactly as shown in the VEXONYX email.</p>
             <label>
               <span>NEW PASSWORD</span>
               <input name="password" type="password" autoComplete="new-password" minLength={16} maxLength={128} required placeholder="At least 16 characters" />
