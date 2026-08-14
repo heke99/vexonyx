@@ -1,6 +1,3 @@
--- Final clean-replay correction for the pre-GPU agent preview runtime.
--- Agent run rows are locked FOR UPDATE while advancing, so step/checkpoint inserts do not need ON CONFLICT fallbacks.
-
 create or replace function ai.start_pre_gpu_agent_run(
   p_organization_id uuid,
   p_project_id uuid,
@@ -92,6 +89,59 @@ begin
   end if;
 
   return query select v_run_id,v_state::text,v_approval_id;
+end;
+$$;
+
+create or replace function security.review_agent_approval(
+  p_organization_id uuid,
+  p_approval_request_id uuid,
+  p_decision security.approval_status,
+  p_reason text default null
+)
+returns table(run_id uuid, run_state text, approval_status security.approval_status)
+language plpgsql
+security definer
+set search_path=''
+as $$
+declare
+  v_user uuid := auth.uid();
+  v_request security.approval_requests%rowtype;
+  v_state ai.agent_run_state;
+begin
+  if v_user is null then raise exception 'unauthorized' using errcode='42501'; end if;
+  if p_decision not in ('approved','rejected') then raise exception 'invalid_decision' using errcode='22023'; end if;
+  if not exists(
+    select 1 from app.organization_members m
+    where m.organization_id=p_organization_id
+      and m.user_id=v_user
+      and m.role in ('organization_owner','organization_admin')
+  ) then raise exception 'admin_required' using errcode='42501'; end if;
+
+  select * into v_request
+  from security.approval_requests a
+  where a.id=p_approval_request_id and a.organization_id=p_organization_id
+  for update;
+  if not found or v_request.status<>'pending' then raise exception 'approval_not_pending' using errcode='22023'; end if;
+
+  if v_request.expires_at is not null and v_request.expires_at<=now() then
+    update security.approval_requests as a
+    set status='expired',reviewed_by=v_user,reviewed_at=now(),decision_note=coalesce(p_reason,'Expired before review')
+    where a.id=v_request.id;
+    raise exception 'approval_expired' using errcode='P0001';
+  end if;
+
+  update security.approval_requests as a
+  set status=p_decision,reviewed_by=v_user,reviewed_at=now(),decision_note=nullif(btrim(coalesce(p_reason,'')),'')
+  where a.id=v_request.id;
+
+  v_state := case when p_decision='approved' then 'QUEUED'::ai.agent_run_state else 'CANCELLED'::ai.agent_run_state end;
+  update ai.agent_runs as r
+  set state=v_state,
+      completed_at=case when p_decision='rejected' then now() else null end,
+      updated_at=now()
+  where r.id=v_request.agent_run_id and r.organization_id=p_organization_id;
+
+  return query select v_request.agent_run_id,v_state::text,p_decision;
 end;
 $$;
 
