@@ -7,6 +7,8 @@ permissions:
   contents: read
 jobs:
   app:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -15,12 +17,16 @@ jobs:
         with:
           node-version: 22
       - run: npm install --no-audit --no-fund
-      - uses: actions/upload-artifact@v4
-        with:
-          name: generated-npm-lock
-          path: package-lock.json
-          retention-days: 1
-          if-no-files-found: error
+      - name: Commit generated npm lockfile once
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/agent/')
+        run: |
+          if [ -n "$(git status --porcelain package-lock.json)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add package-lock.json
+            git commit -m "chore: lock npm dependencies"
+            git push origin HEAD:${GITHUB_REF_NAME}
+          fi
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run test
@@ -40,4 +46,6 @@ jobs:
       - run: supabase init || true
       - run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor
       - run: supabase db reset
+      - run: supabase db lint --level error
+      - run: supabase test db
       - run: supabase status
