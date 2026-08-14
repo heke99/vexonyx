@@ -27,6 +27,7 @@ function refresh(projectId: string) {
   revalidatePath(`/app/projects/${projectId}`);
   revalidatePath("/app");
   revalidatePath("/app/projects");
+  revalidatePath("/app/projects/deleted");
   revalidatePath("/app/files");
   revalidatePath("/app/findings");
   revalidatePath("/app/reports");
@@ -66,7 +67,17 @@ export async function softDeleteProject(formData: FormData) {
   if (!projectId || !organizationId) return;
   await requireOrganizationAdmin(supabase,userId,organizationId);
   const { error } = await supabase.schema("app").from("projects").update({ deleted_at:new Date().toISOString(), status:"archived" }).eq("id",projectId).eq("organization_id",organizationId);
-  if (!error) redirect("/app/projects");
+  if (!error) redirect("/app/projects/deleted");
+}
+
+export async function restoreDeletedProject(formData: FormData) {
+  const { supabase, userId } = await identity();
+  const projectId = clean(formData.get("project_id"),36); const organizationId = clean(formData.get("organization_id"),36);
+  if (!projectId || !organizationId) return;
+  await requireOrganizationAdmin(supabase,userId,organizationId);
+  const { error } = await supabase.schema("app").from("projects").update({ deleted_at:null, archived_at:null, status:"active" }).eq("id",projectId).eq("organization_id",organizationId).not("deleted_at","is",null);
+  refresh(projectId);
+  if (!error) redirect(`/app/projects/${projectId}`);
 }
 
 export async function purgeProject(formData: FormData) {
@@ -77,7 +88,8 @@ export async function purgeProject(formData: FormData) {
   const { data: project } = await supabase.schema("app").from("projects").select("name,deleted_at").eq("id",projectId).eq("organization_id",organizationId).maybeSingle();
   if (!project?.deleted_at || confirmation !== project.name) return;
   const { error } = await supabase.schema("app").from("projects").delete().eq("id",projectId).eq("organization_id",organizationId);
-  if (!error) redirect("/app/projects");
+  refresh(projectId);
+  if (!error) redirect("/app/projects/deleted");
 }
 
 export async function createEngagement(formData: FormData) {
