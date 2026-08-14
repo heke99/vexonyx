@@ -19,9 +19,15 @@ select lives_ok(
   $$select * from artifacts.finalize_upload('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2','bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2','ffffffff-ffff-4fff-8fff-fffffffffff2')$$,
   'Organization member can finalize its quarantined project upload'
 );
+reset role;
+
+update artifacts.files set status='scanning' where id='ffffffff-ffff-4fff-8fff-fffffffffff2';
+
+set local role authenticated;
+set local request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
 select lives_ok(
   $$select * from artifacts.finalize_upload('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2','bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2','ffffffff-ffff-4fff-8fff-fffffffffff2')$$,
-  'Upload finalization is idempotent while file remains quarantined'
+  'Upload finalization returns the existing job after processing has started'
 );
 reset role;
 
