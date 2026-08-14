@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import styles from "./waitlist-form.module.css";
 
 type State = {
   kind: "idle" | "loading" | "success" | "error";
@@ -67,14 +68,14 @@ export function WaitlistForm({ compact = false, referralCode }: { compact?: bool
   return (
     <form className={compact ? "waitlist-form compact" : "waitlist-form"} onSubmit={submit}>
       {!compact ? (
-        <fieldset className="waitlist-choice">
+        <fieldset className={styles.choice}>
           <legend>I'm joining as</legend>
-          <div className="waitlist-choice-grid">
-            <label className={signupType === "individual" ? "selected" : ""}>
+          <div className={styles.grid}>
+            <label className={`${styles.option} ${signupType === "individual" ? styles.optionSelected : ""}`}>
               <input type="radio" name="signup_type" value="individual" checked={signupType === "individual"} onChange={() => setSignupType("individual")} />
               <span><strong>Individual</strong><small>Researcher, student, developer or security professional</small></span>
             </label>
-            <label className={signupType === "company" ? "selected" : ""}>
+            <label className={`${styles.option} ${signupType === "company" ? styles.optionSelected : ""}`}>
               <input type="radio" name="signup_type" value="company" checked={signupType === "company"} onChange={() => setSignupType("company")} />
               <span><strong>Company or team</strong><small>Security team, consultancy, startup or enterprise</small></span>
             </label>
