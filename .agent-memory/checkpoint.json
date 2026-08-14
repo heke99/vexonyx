@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "project": "VEXONYX",
+  "status": "NOT_STARTED",
+  "active_work_item": null,
+  "active_subtask": null,
+  "branch": null,
+  "base_sha": null,
+  "head_sha": null,
+  "last_verified_at": null,
+  "exact_next_action": null,
+  "blockers": [],
+  "verification": {
+    "typecheck": "NOT_RUN",
+    "lint": "NOT_RUN",
+    "tests": "NOT_RUN",
+    "build": "NOT_RUN",
+    "database": "NOT_RUN",
+    "security": "NOT_RUN"
+  }
+}
