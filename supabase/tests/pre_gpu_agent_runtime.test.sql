@@ -48,7 +48,7 @@ reset role;
 
 select results_eq(
   format('select current_state from ai.agent_checkpoints where agent_run_id=%L::uuid order by step_number desc limit 1',(select run_id from run_result)),
-  array['PLANNING'::text],
+  array['PLANNING'::ai.agent_run_state],
   'Latest checkpoint records the resumed planning state'
 );
 
