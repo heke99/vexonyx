@@ -1,2 +1,10 @@
 import { ContentPage } from "@/components/content-page";
-export default function Page(){return <ContentPage label="AGENTS" title="Agents that work inside explicit boundaries." intro="The agent runtime separates reasoning from authorization. Model output is never the source of truth for scope, permissions or credentials." cards={[{title:"Deterministic routing",body:"Task classes choose small, general, security and escalation roles through versioned routing rules."},{title:"Approval gates",body:"High-impact actions can pause in WAITING_FOR_APPROVAL instead of silently continuing."},{title:"Checkpoint recovery",body:"Every meaningful step can persist state, next action, versions, usage and budget for safe resume."},{title:"Loop protection",body:"Step, duration, token, tool and cost caps prevent unbounded autonomous execution."}]}/>}
+
+export default function Page(){
+  return <ContentPage label="AGENTS" title="Agents that stay inside the engagement." intro="VEXONYX agents can reason over project context while authorization, permissions and target scope remain outside model control." cards={[
+    {title:"Right-sized intelligence",body:"Simple work stays fast while difficult security analysis can be escalated to stronger reasoning when needed."},
+    {title:"Approval gates",body:"Teams can require a human decision before high-impact or sensitive actions continue."},
+    {title:"Crash-safe progress",body:"Meaningful progress is saved so long-running work can recover safely after a disconnect or worker restart."},
+    {title:"Hard limits",body:"Time, steps, tool use and cost can be capped to prevent runaway execution."}
+  ]}/>;
+}
