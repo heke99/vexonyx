@@ -1,8 +1,26 @@
 import Link from "next/link";
 import { Brand } from "./brand";
 
-const items = [
-  ["Overview", "/app"], ["New chat", "/app/chat"], ["Projects", "/app/projects"], ["Agents", "/app/agents"], ["Files", "/app/files"], ["Findings", "/app/findings"], ["Reports", "/app/reports"], ["Activity", "/app/activity"], ["Team", "/app/team"], ["Usage", "/app/usage"], ["Settings", "/app/settings"],
-] as const;
+export function AppSidebar() {
+  return <aside className="app-sidebar">
+    <Brand />
+    <nav aria-label="Workspace navigation">
+      <Link className="button button-small" href="/app/chat">+ New chat</Link>
+      <Link href="/app/projects">+ New project</Link>
 
-export function AppSidebar() { return <aside className="app-sidebar"><Brand /> <nav aria-label="Workspace">{items.map(([label, href], index) => <Link className={index === 8 ? "nav-group" : ""} href={href} key={href}>{label}</Link>)}</nav></aside>; }
+      <span className="nav-group">WORKSPACE</span>
+      <Link href="/app">Overview</Link>
+      <Link href="/app/projects">Projects</Link>
+      <Link href="/app/agents">Agents</Link>
+      <Link href="/app/files">Files</Link>
+      <Link href="/app/findings">Findings</Link>
+      <Link href="/app/reports">Reports</Link>
+      <Link href="/app/activity">Activity</Link>
+
+      <span className="nav-group">ORGANIZATION</span>
+      <Link href="/app/team">Team</Link>
+      <Link href="/app/usage">Usage</Link>
+      <Link href="/app/settings">Settings</Link>
+    </nav>
+  </aside>;
+}
