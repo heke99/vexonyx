@@ -69,20 +69,26 @@ export function organizationInvitationTemplate(input: { organizationName: string
   };
 }
 
-export function adminMagicLinkTemplate(input: { loginUrl: string }): EmailTemplate {
-  const preview = "Secure sign-in link for the VEXONYX Superadmin console.";
+export function adminVerificationCodeTemplate(input: { code: string; purpose: "login" | "password_reset" }): EmailTemplate {
+  const safeCode = escapeHtml(input.code);
+  const passwordReset = input.purpose === "password_reset";
+  const preview = passwordReset ? "Your VEXONYX Superadmin password reset code." : "Your VEXONYX Superadmin sign-in verification code.";
+  const title = passwordReset ? "Verify password reset" : "Verify your sign-in";
+  const subject = passwordReset ? "VEXONYX Superadmin password reset code" : "VEXONYX Superadmin verification code";
+  const purposeText = passwordReset
+    ? "A password setup or reset was requested for the VEXONYX Superadmin account."
+    : "Your Superadmin password was accepted. Use this one-time code to complete sign-in.";
+
   return {
-    subject: "VEXONYX Superadmin sign-in",
+    subject,
     preview,
-    text: `A secure sign-in was requested for the VEXONYX Superadmin console.\n\nSign in: ${input.loginUrl}\n\nUse this link only if you requested access to admin.vexonyx.com. If you did not request it, ignore this email and no session will be created.\n\nVEXONYX is operated by ${OPERATOR}, Wyoming, United States. Contact: ${CONTACT}`,
+    text: `${purposeText}\n\nVerification code: ${input.code}\n\nThe code expires in 10 minutes and can only be used for the current administrator authentication attempt. If you did not request this, do not share the code and contact ${CONTACT}.\n\nVEXONYX is operated by ${OPERATOR}, Wyoming, United States.`,
     html: layout({
       preview,
-      eyebrow: "SUPERADMIN · SECURE ACCESS",
-      title: "Sign in to VEXONYX Admin",
-      body: `<p style="margin:0;">A secure administrator sign-in was requested for <strong style="color:${BRAND.text};">admin.vexonyx.com</strong>. This link is intended only for the VEXONYX operator account.</p>`,
-      ctaLabel: "Open Superadmin",
-      ctaUrl: input.loginUrl,
-      footnote: "If you did not request this administrator sign-in, ignore this message. Never forward administrator sign-in links.",
+      eyebrow: passwordReset ? "SUPERADMIN · PASSWORD SECURITY" : "SUPERADMIN · TWO-STEP SIGN-IN",
+      title,
+      body: `<p style="margin:0 0 18px;">${purposeText}</p><div style="display:inline-block;padding:14px 20px;border:1px solid #39442b;background:#0b1008;border-radius:10px;color:${BRAND.accent};font-family:monospace;font-size:30px;line-height:1;letter-spacing:.18em;font-weight:700;">${safeCode}</div><p style="margin:18px 0 0;font-size:13px;color:${BRAND.faint};">Enter this code only on <strong style="color:${BRAND.text};">admin.vexonyx.com</strong>. Never send the code by chat, SMS or support message.</p>`,
+      footnote: "This code expires in 10 minutes and is single-purpose. If you did not initiate this administrator request, do not use or share the code.",
     }),
   };
 }

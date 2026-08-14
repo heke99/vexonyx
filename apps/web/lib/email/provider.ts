@@ -1,6 +1,6 @@
 import "server-only";
 import {
-  adminMagicLinkTemplate,
+  adminVerificationCodeTemplate,
   organizationInvitationTemplate,
   waitlistConfirmedTemplate,
   waitlistVerificationTemplate,
@@ -13,7 +13,7 @@ export interface EmailProvider {
   sendWaitlistVerification(input: { to: string; verificationUrl: string; name?: string | null }): Promise<EmailResult>;
   sendWaitlistConfirmed(input: { to: string; name?: string | null; referralUrl?: string | null }): Promise<EmailResult>;
   sendOrganizationInvitation(input: { to: string; organizationName: string; role: string; invitationUrl: string }): Promise<EmailResult>;
-  sendAdminMagicLink(input: { to: string; loginUrl: string }): Promise<EmailResult>;
+  sendAdminVerificationCode(input: { to: string; code: string; purpose: "login" | "password_reset" }): Promise<EmailResult>;
 }
 
 class ResendEmailProvider implements EmailProvider {
@@ -54,11 +54,11 @@ class ResendEmailProvider implements EmailProvider {
     return this.send({ to: input.to, template: organizationInvitationTemplate(input) });
   }
 
-  async sendAdminMagicLink(input: { to: string; loginUrl: string }): Promise<EmailResult> {
+  async sendAdminVerificationCode(input: { to: string; code: string; purpose: "login" | "password_reset" }): Promise<EmailResult> {
     return this.send({
       to: input.to,
       fromOverride: process.env.TRANSACTIONAL_FROM_EMAIL || process.env.WAITLIST_FROM_EMAIL,
-      template: adminMagicLinkTemplate(input),
+      template: adminVerificationCodeTemplate(input),
     });
   }
 }

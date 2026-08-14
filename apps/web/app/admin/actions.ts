@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireSuperadmin } from "@/lib/admin/guard";
+import { revokeAllVerifiedAdminSessions, revokeCurrentVerifiedAdminSession } from "@/lib/admin/verified-session";
 import { createClient } from "@/lib/supabase/server";
 
 async function audit(admin: Awaited<ReturnType<typeof requireSuperadmin>>["admin"], userId: string, action: string, resourceType: string, resourceId?: string | null, metadata?: Record<string, unknown>) {
@@ -124,9 +125,35 @@ export async function setUserSuspension(formData: FormData) {
   revalidatePath("/admin");
 }
 
-export async function signOutAdmin() {
-  await requireSuperadmin();
+export async function changeAdminPassword(formData: FormData) {
+  const { admin, userId } = await requireSuperadmin();
+  const password = String(formData.get("password") ?? "");
+  const confirmPassword = String(formData.get("confirm_password") ?? "");
+  if (password.length < 16 || password.length > 128 || password !== confirmPassword) {
+    redirect("/admin/account?error=password_rules");
+  }
+
   const client = await createClient();
-  await client.auth.signOut();
+  const { data: claims } = await client.auth.getClaims();
+  const issuedAt = Number(claims?.claims?.iat ?? 0);
+  if (!issuedAt || Math.floor(Date.now() / 1000) - issuedAt > 30 * 60) {
+    redirect("/admin-login?error=reauth_required");
+  }
+
+  const { error } = await admin.auth.admin.updateUserById(userId, { password });
+  if (error) redirect("/admin/account?error=password_update");
+
+  await audit(admin, userId, "admin.password_changed", "admin_account", userId, { sessions_revoked: true });
+  await revokeAllVerifiedAdminSessions(admin, userId);
+  await client.auth.signOut({ scope: "global" });
+  redirect("/admin-login?password=updated");
+}
+
+export async function signOutAdmin() {
+  const { admin, userId } = await requireSuperadmin();
+  const client = await createClient();
+  await audit(admin, userId, "admin.signed_out", "admin_session", userId);
+  await revokeCurrentVerifiedAdminSession(admin, userId);
+  await client.auth.signOut({ scope: "local" });
   redirect("/admin-login");
 }
