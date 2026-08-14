@@ -12,5 +12,8 @@
     "typecheck": "npm run typecheck --workspace=@vexonyx/web",
     "test": "npm run test --workspaces --if-present",
     "check": "npm run lint && npm run typecheck && npm run test && npm run build"
+  },
+  "devDependencies": {
+    "supabase": "2.101.0"
   }
 }
