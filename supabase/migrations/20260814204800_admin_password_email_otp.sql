@@ -60,6 +60,8 @@ grant execute on function public.vexonyx_superadmin_user_id(text) to service_rol
 -- Superadmin control-plane access is deliberately server/service-role only.
 -- A raw Supabase password session must never inherit organization-wide access
 -- before the application has completed its email step-up verification.
+revoke execute on function operations.is_superadmin() from authenticated;
+
 create or replace function operations.is_org_member(org_id uuid)
 returns boolean
 language sql
@@ -123,6 +125,7 @@ using (
 );
 
 drop policy if exists profiles_select_own_or_superadmin on app.profiles;
+drop policy if exists profiles_select_own on app.profiles;
 create policy profiles_select_own
 on app.profiles
 for select
