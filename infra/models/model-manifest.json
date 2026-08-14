@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "policy": "No production model may use an unpinned latest revision.",
+  "models": [
+    {"alias":"vexonyx-small","source":"huihui-ai/Huihui-gemma-4-12B-agentic-fable5-abliterated","revision":null,"license":null,"runtime":null,"status":"unverified"},
+    {"alias":"vexonyx-general","source":"huihui-ai/Huihui-Qwen3.6-27B-abliterated","revision":null,"license":null,"runtime":null,"status":"unverified"},
+    {"alias":"vexonyx-security","source":"huihui-ai/Huihui-CyberStrike-OffSec-35B-abliterated","revision":null,"license":null,"runtime":null,"status":"unverified"},
+    {"alias":"vexonyx-reasoning","source":"huihui-ai/Huihui-GLM-5.2-abliterated-GGUF","revision":null,"license":null,"runtime":null,"status":"unverified"},
+    {"alias":"vexonyx-embedding","source":"Qwen/Qwen3-Embedding-4B","revision":null,"license":null,"runtime":null,"status":"unverified"}
+  ]
+}
