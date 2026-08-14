@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { HeroAttackSurface } from "@/components/hero-attack-surface";
 import { HeroWorkspace } from "@/components/hero-workspace";
+import { MarketingFooter } from "@/components/marketing-footer";
 import { MarketingHeader } from "@/components/marketing-header";
 import { WaitlistForm } from "@/components/waitlist-form";
 import heroStyles from "./home-hero.module.css";
@@ -61,7 +62,7 @@ export default function HomePage() {
 
     <section className="section shell privacy-section"><div><div className="section-label">PRIVATE BY ARCHITECTURE</div><h2>Your security context should stay yours.</h2><p>VEXONYX is designed around private inference, organization-scoped retrieval and server-side authorization. Customer project data is never used implicitly for model training.</p></div><div className="privacy-stack"><span>Your authorized project</span><i>↓</i><span>VEXONYX</span><i>↓</i><span>Private AI</span><i>↓</i><span>Findings + evidence + report</span></div></section>
 
-    <section className="waitlist-cta"><div className="shell waitlist-inner"><div><div className="section-label">PRIVATE BETA · CYBERSECURITY</div><h2>Join VEXONYX before the private beta opens.</h2><p>Pentesters, researchers, developers and security teams can all join. Tell us who you are and we will keep your place after email verification.</p></div><WaitlistForm compact /></div></section>
-    <footer className="site-footer"><div className="shell footer-grid"><strong>VEXONYX</strong><p>AI platform for cybersecurity and authorized penetration testing.</p><nav><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link><Link href="/acceptable-use">Acceptable use</Link><Link href="/contact">Contact</Link></nav><span>© 2026 VEXONYX</span></div></footer>
+    <section className="waitlist-cta"><div className="shell waitlist-inner"><div><div className="section-label">PRIVATE BETA · WAITLIST ONLY</div><h2>Join VEXONYX before the private beta opens.</h2><p>Account access is not open yet. Pentesters, researchers, developers and security teams can join the verified waitlist now.</p></div><WaitlistForm compact /></div></section>
+    <MarketingFooter />
   </main>;
 }
