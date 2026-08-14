@@ -13,6 +13,7 @@ export default function HomePage() {
   return <main className="marketing-page"><MarketingHeader />
     <section className="hero shell">
       <div className="hero-copy"><div className="kicker"><span /> AI-native security workspace</div><h1>AI agents for modern security teams</h1><p>Vexonyx combines AI agents, security workflows, projects, evidence and reporting in one workspace built for authorized security teams.</p><div className="hero-actions"><Link className="button" href="/waitlist">Join the waitlist</Link><Link className="button secondary" href="#workflow">See how it works <span>↘</span></Link></div><div className="trust-row"><span>Tenant-isolated</span><span>Scope-aware</span><span>Audit-ready</span><span>Self-hosted AI ready</span></div></div>
+      <div className="section-label">SYNTHETIC DEMO · EXAMPLE DATA ONLY · NO LIVE CUSTOMER TARGET</div>
       <HeroWorkspace />
     </section>
     <section className="proof-strip"><div className="shell proof-grid">{proof.map(([title, text], i) => <article key={title}><span>0{i+1}</span><h2>{title}</h2><p>{text}</p></article>)}</div></section>
