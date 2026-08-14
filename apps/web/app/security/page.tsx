@@ -1,2 +1,10 @@
 import { ContentPage } from "@/components/content-page";
-export default function Page(){return <ContentPage label="SECURITY" title="The model is not the security boundary." intro="Identity, tenant membership, authorization, scope, budgets, kill-switches and sandbox policy are enforced by trusted VEXONYX control-plane layers." cards={[{title:"Tenant isolation",body:"Organization-bound rows are protected with PostgreSQL RLS and server-side checks."},{title:"Untrusted context",body:"Uploaded files, repositories, web content and tool output remain untrusted data and cannot rewrite control-plane policy."},{title:"Restricted execution",body:"Tool requests must pass permissions, live authorization, normalized scope, exclusions, approval and budget checks."},{title:"Degraded-safe",body:"Projects and evidence remain available when inference is unavailable; active execution can be disabled independently."}]}/>}
+
+export default function Page(){
+  return <ContentPage label="SECURITY" title="AI never decides its own access." intro="Identity, organization access, authorization, scope, budgets and emergency controls are enforced independently from model output." cards={[
+    {title:"Organization isolation",body:"Projects and customer data are separated with database-level access rules and server-side checks."},
+    {title:"Untrusted context",body:"Uploaded files, repositories, web content and external results stay untrusted and cannot grant themselves access."},
+    {title:"Restricted execution",body:"Active requests must pass permissions, current authorization, normalized scope, exclusions, approval and budget checks."},
+    {title:"Safe when AI is offline",body:"Projects and evidence remain available if AI is unavailable, while active external actions can stay disabled independently."}
+  ]}/>;
+}
