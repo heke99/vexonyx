@@ -1,5 +1,6 @@
 import "server-only";
 import {
+  adminMagicLinkTemplate,
   organizationInvitationTemplate,
   waitlistConfirmedTemplate,
   waitlistVerificationTemplate,
@@ -12,6 +13,7 @@ export interface EmailProvider {
   sendWaitlistVerification(input: { to: string; verificationUrl: string; name?: string | null }): Promise<EmailResult>;
   sendWaitlistConfirmed(input: { to: string; name?: string | null; referralUrl?: string | null }): Promise<EmailResult>;
   sendOrganizationInvitation(input: { to: string; organizationName: string; role: string; invitationUrl: string }): Promise<EmailResult>;
+  sendAdminMagicLink(input: { to: string; loginUrl: string }): Promise<EmailResult>;
 }
 
 class ResendEmailProvider implements EmailProvider {
@@ -41,25 +43,22 @@ class ResendEmailProvider implements EmailProvider {
   }
 
   async sendWaitlistVerification(input: { to: string; verificationUrl: string; name?: string | null }): Promise<EmailResult> {
-    return this.send({
-      to: input.to,
-      fromOverride: process.env.WAITLIST_FROM_EMAIL,
-      template: waitlistVerificationTemplate(input),
-    });
+    return this.send({ to: input.to, fromOverride: process.env.WAITLIST_FROM_EMAIL, template: waitlistVerificationTemplate(input) });
   }
 
   async sendWaitlistConfirmed(input: { to: string; name?: string | null; referralUrl?: string | null }): Promise<EmailResult> {
-    return this.send({
-      to: input.to,
-      fromOverride: process.env.WAITLIST_FROM_EMAIL,
-      template: waitlistConfirmedTemplate(input),
-    });
+    return this.send({ to: input.to, fromOverride: process.env.WAITLIST_FROM_EMAIL, template: waitlistConfirmedTemplate(input) });
   }
 
   async sendOrganizationInvitation(input: { to: string; organizationName: string; role: string; invitationUrl: string }): Promise<EmailResult> {
+    return this.send({ to: input.to, template: organizationInvitationTemplate(input) });
+  }
+
+  async sendAdminMagicLink(input: { to: string; loginUrl: string }): Promise<EmailResult> {
     return this.send({
       to: input.to,
-      template: organizationInvitationTemplate(input),
+      fromOverride: process.env.TRANSACTIONAL_FROM_EMAIL || process.env.WAITLIST_FROM_EMAIL,
+      template: adminMagicLinkTemplate(input),
     });
   }
 }
