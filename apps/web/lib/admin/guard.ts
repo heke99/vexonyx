@@ -8,7 +8,7 @@ export async function requireSuperadmin() {
   const { data: claims } = await client.auth.getClaims();
   const userId = claims?.claims?.sub;
 
-  if (!userId) redirect("/login?next=/admin");
+  if (!userId) redirect("/admin-login");
 
   const { data: profile } = await client
     .schema("app")
