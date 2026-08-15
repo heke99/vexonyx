@@ -3,21 +3,23 @@ import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
 const STRIPE_API = "https://api.stripe.com/v1";
 
-type StripeCatalogProductInput = {
+export type StripeCatalogProductInput = {
   resourceId: string;
   code: string;
   name: string;
   description?: string | null;
   kind: "subscription_plan" | "credit_pack";
+  taxCode?: string | null;
 };
 
-type StripePriceInput = {
+export type StripePriceInput = {
   resourceId: string;
   productId: string;
   currency: string;
   unitAmountMinor: number;
   interval?: "month" | "year";
   kind: "subscription_plan_price" | "credit_pack_price";
+  taxBehavior?: "exclusive" | "inclusive";
 };
 
 export function stripeSecretConfigured() {
@@ -67,11 +69,17 @@ function updateKey(prefix: string, resourceId: string, values: Array<string | nu
   return `${prefix}:${resourceId}:${digest}`;
 }
 
+function setProductTaxAndDescriptor(params: URLSearchParams, input: StripeCatalogProductInput) {
+  if (input.taxCode) params.set("tax_code", input.taxCode);
+  if (input.kind === "subscription_plan") params.set("statement_descriptor", "VEXONYX");
+}
+
 export async function createStripeCatalogProduct(input: StripeCatalogProductInput) {
   const params = new URLSearchParams();
   params.set("name", input.name);
   if (input.description) params.set("description", input.description);
   metadata(params, input);
+  setProductTaxAndDescriptor(params, input);
   return stripeRequest("/products", params, `catalog-product-create:${input.resourceId}`);
 }
 
@@ -82,10 +90,11 @@ export async function updateStripeCatalogProduct(productId: string, input: Strip
   params.set("description", input.description || "");
   if (typeof input.active === "boolean") params.set("active", String(input.active));
   metadata(params, input);
+  setProductTaxAndDescriptor(params, input);
   return stripeRequest(
     `/products/${encodeURIComponent(productId)}`,
     params,
-    updateKey("catalog-product-update", input.resourceId, [input.name, input.description || "", input.active ?? true]),
+    updateKey("catalog-product-update", input.resourceId, [input.name, input.description || "", input.active ?? true, input.taxCode || ""]),
   );
 }
 
@@ -97,6 +106,7 @@ export async function createStripeCatalogPrice(input: StripePriceInput) {
   params.set("product", input.productId);
   params.set("currency", input.currency.toLowerCase());
   params.set("unit_amount", String(input.unitAmountMinor));
+  params.set("tax_behavior", input.taxBehavior || "exclusive");
   if (input.interval) params.set("recurring[interval]", input.interval);
   metadata(params, input);
   return stripeRequest("/prices", params, `catalog-price-create:${input.resourceId}`);
@@ -120,6 +130,20 @@ export async function retrieveStripeProduct(productId: string) {
 export async function retrieveStripePrice(priceId: string) {
   if (!/^price_[A-Za-z0-9]+$/.test(priceId)) throw new Error("invalid_stripe_price_id");
   return stripeRequest(`/prices/${encodeURIComponent(priceId)}`);
+}
+
+export async function retrieveStripeTaxCode(taxCode: string) {
+  if (!/^txcd_[0-9]{8}$/.test(taxCode)) throw new Error("invalid_stripe_tax_code");
+  return stripeRequest(`/tax_codes/${encodeURIComponent(taxCode)}`);
+}
+
+export async function listActiveStripeTaxRegistrations() {
+  const result = await stripeRequest("/tax/registrations?status=active&limit=100");
+  return Array.isArray(result.data) ? result.data as Array<Record<string, unknown>> : [];
+}
+
+export async function retrieveStripeTaxSettings() {
+  return stripeRequest("/tax/settings");
 }
 
 export function verifyStripeSignature(payload: string, signatureHeader: string | null, toleranceSeconds = 300) {
