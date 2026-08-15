@@ -7,9 +7,9 @@ import { isAuthorizedWorkerRequest } from "@/lib/workers/internal-auth";
 export const maxDuration = 300;
 
 export async function POST(request: Request) {
-  if (!isAuthorizedWorkerRequest(request)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const admin = createAdminClient();
   if (!admin) return NextResponse.json({ error: "worker_unavailable" }, { status: 503 });
+  if (!(await isAuthorizedWorkerRequest(request, admin))) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const workerId = `fileproc-${randomUUID()}`;
   const claimed = await admin.schema("operations").rpc("claim_jobs", {
