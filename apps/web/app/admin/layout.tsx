@@ -7,7 +7,7 @@ import "./admin.css";
 const groups = [
   { label: "Overview", items: [["/admin", "Command center", "⌂"]] },
   { label: "Growth", items: [["/admin/waitlist", "Waitlist", "↗"],["/admin/users", "Users", "◎"],["/admin/organizations", "Organizations", "◇"],["/admin/audience", "Audience & email", "✉"]] },
-  { label: "Commerce", items: [["/admin/billing", "Plans & billing", "¤"],["/admin/credits", "Credits", "◐"],["/admin/usage", "Usage & cost", "◫"]] },
+  { label: "Commerce", items: [["/admin/billing", "Plans & billing", "¤"],["/admin/credits", "Credits", "◐"],["/admin/tax", "Tax readiness", "%"],["/admin/usage", "Usage & cost", "◫"]] },
   { label: "Product", items: [["/admin/integrations", "Connectors & plugins", "⛓"],["/admin/inference", "AI requests", "✦"],["/admin/agents", "Agent runs", "⌁"],["/admin/jobs", "Jobs", "≋"],["/admin/findings", "Findings", "△"],["/admin/reports", "Reports", "▤"]] },
   { label: "Security", items: [["/admin/account", "Account security", "◌"],["/admin/security", "Approvals", "✓"],["/admin/audit", "Audit log", "⌕"]] },
   { label: "Operations", items: [["/admin/platform", "Platform", "◉"],["/admin/feature-flags", "Feature flags", "⚑"],["/admin/models", "Model registry", "◈"],["/admin/deployments", "Deployments", "⬡"]] },
