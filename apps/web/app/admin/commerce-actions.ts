@@ -69,7 +69,8 @@ export async function resetUserProductHistory(formData:FormData){
 
 export async function createAudienceExport(formData:FormData){
   const {admin,userId}=await requireSuperadmin(); const exportType=text(formData,"export_type",20); if(!["waitlist","users","customers","audience"].includes(exportType))throw new Error("Invalid export type");
-  const {data,error}=await admin.schema("marketing").from("exports").insert({requested_by:userId,export_type:exportType,status:"queued"}).select("id").single();if(error)throw error; await admin.schema("operations").from("jobs").insert({queue_name:"marketing_export",job_type:"marketing_export",payload:{export_id:data.id},status:"queued",available_at:new Date().toISOString()});
+  const {data,error}=await admin.schema("marketing").from("exports").insert({requested_by:userId,export_type:exportType,status:"queued"}).select("id").single();if(error)throw error;
+  const job=await admin.schema("operations").from("jobs").insert({queue_name:"maintenance",organization_id:null,priority:3,status:"queued",payload:{job_type:"marketing_export",export_id:data.id},idempotency_key:`marketing-export:${data.id}`,max_attempts:5,available_at:new Date().toISOString()});if(job.error)throw job.error;
   await audit(admin,userId,"marketing.export_requested","marketing_export",data.id,{export_type:exportType});revalidatePath("/admin/audience");
 }
 
