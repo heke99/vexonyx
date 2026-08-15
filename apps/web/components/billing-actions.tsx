@@ -6,7 +6,9 @@ async function openBillingEndpoint(path: string, body?: Record<string, string>) 
   const response = await fetch(path, { method: "POST", headers: body ? { "content-type": "application/json" } : undefined, body: body ? JSON.stringify(body) : undefined });
   const payload = await response.json().catch(() => ({})) as { url?: string; error?: string };
   if (!response.ok || !payload.url) throw new Error(payload.error || "billing_request_failed");
-  window.location.assign(payload.url);
+  const destination = new URL(payload.url);
+  if (destination.protocol !== "https:") throw new Error("invalid_billing_redirect");
+  globalThis.location.href = destination.toString();
 }
 
 export function CheckoutButton({ kind, id, children }: { kind: "subscription" | "credit_pack"; id: string; children: React.ReactNode }) {
