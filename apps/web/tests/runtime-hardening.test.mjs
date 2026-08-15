@@ -39,3 +39,19 @@ test("isolated parser retains deny-all network and verified teardown", () => {
   assert.match(worker, /teardownVerified:\s*true/);
   assert.match(worker, /runtime\.isolated_parser_canary/);
 });
+
+test("marketing exports use the leased queue with retries and fencing", () => {
+  const action = read("../app/admin/audience-actions.ts");
+  const worker = read("../app/api/internal/workers/marketing-exports/route.ts");
+  const migration = read("../../../supabase/migrations/20260815115000_marketing_export_queue.sql");
+  assert.match(action, /queue_name:\s*"marketing"/);
+  assert.match(action, /max_attempts:\s*5/);
+  assert.match(worker, /p_queue_name:\s*"marketing"/);
+  assert.match(worker, /start_job/);
+  assert.match(worker, /finish_job/);
+  assert.match(worker, /lease_generation/);
+  assert.match(worker, /attempt>=5/);
+  assert.match(worker, /admin-exports/);
+  assert.match(worker, /upsert:true/);
+  assert.match(migration, /'marketing'/);
+});
