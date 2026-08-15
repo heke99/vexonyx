@@ -8,5 +8,11 @@
     "VERCEL_PREVIEW_FEEDBACK_ENABLED": "0",
     "NEXT_PUBLIC_SUPABASE_URL": "https://trwwicnqnudllbeldsib.supabase.co",
     "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_ZhPDqGIq3fmgvkVqrHo8zQ_KclWcAmC"
-  }
+  },
+  "crons": [
+    { "path": "/api/internal/workers/file-processing", "schedule": "*/2 * * * *" },
+    { "path": "/api/internal/workers/isolated-parser", "schedule": "*/2 * * * *" },
+    { "path": "/api/internal/workers/render-reports", "schedule": "*/5 * * * *" },
+    { "path": "/api/internal/workers/marketing-exports", "schedule": "*/10 * * * *" }
+  ]
 }
