@@ -33,18 +33,26 @@ test("credit values are versioned and customer-visible from one catalog", () => 
   assert.match(customerPage, /credits \/ month/);
 });
 
-test("each user gets a self-scoped monthly usage view", () => {
+test("each user gets self-scoped monthly resource and credit usage", () => {
   const usagePage = read("../app/app/usage/page.tsx");
-  const migration = read("../../../supabase/migrations/20260815142905_user_usage_monthly.sql");
+  const usageMigration = read("../../../supabase/migrations/20260815170114_user_usage_monthly.sql");
+  const creditMigration = read("../../../supabase/migrations/20260815171231_user_credit_monthly.sql");
   assert.match(usagePage, /usage_user_monthly/);
+  assert.match(usagePage, /credit_user_monthly/);
   assert.match(usagePage, /\.eq\("user_id", ws\.userId\)/);
   assert.match(usagePage, /Credits used this month/);
-  assert.match(usagePage, /entry_type", "usage"/);
-  assert.match(migration, /usage\.usage_user_monthly/);
-  assert.match(migration, /user_id = auth\.uid\(\)/);
-  assert.match(migration, /operations\.is_org_member\(organization_id\)/);
-  assert.match(migration, /aggregate_user_usage_event/);
-  assert.match(migration, /set search_path = ''/i);
+  assert.doesNotMatch(usagePage, /from\("credit_ledger"\)/);
+  assert.match(usageMigration, /usage\.usage_user_monthly/);
+  assert.match(usageMigration, /user_id = auth\.uid\(\)/);
+  assert.match(usageMigration, /operations\.is_org_member\(organization_id\)/);
+  assert.match(usageMigration, /aggregate_user_usage_event/);
+  assert.match(usageMigration, /set search_path = ''/i);
+  assert.match(creditMigration, /usage\.credit_user_monthly/);
+  assert.match(creditMigration, /user_id = auth\.uid\(\)/);
+  assert.match(creditMigration, /operations\.is_org_member\(organization_id\)/);
+  assert.match(creditMigration, /aggregate_user_credit_usage/);
+  assert.match(creditMigration, /new\.entry_type = 'usage'/);
+  assert.match(creditMigration, /set search_path = ''/i);
 });
 
 test("credit pack webhooks resolve authoritative credits from the server catalog", () => {
