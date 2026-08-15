@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getWorkspace } from "@/lib/workspace";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { stripeConfigured, stripeRequest } from "@/lib/billing/stripe";
+import { listActiveStripeTaxRegistrations, stripeConfigured, stripeRequest } from "@/lib/billing/stripe";
 
 function origin() {
   return process.env.NEXT_PUBLIC_APP_URL || "https://vexonyx.com";
@@ -24,10 +24,13 @@ export async function POST(request: Request) {
   let providerPriceId: string | null = null;
   let credits = 0;
   let catalogId: string | null = null;
+  let taxCode: string | null = null;
+  let taxClassificationStatus: string | null = null;
+
   if (kind === "subscription") {
     if (!body?.price_id) return NextResponse.json({ error: "price_required" }, { status: 400 });
     const { data: price } = await admin.schema("billing").from("plan_prices")
-      .select("id,provider_price_id,provider_sync_status,active,plan_id,plans!inner(status,is_public,provider_sync_status,provider_product_id)")
+      .select("id,provider_price_id,provider_sync_status,active,plan_id,tax_behavior,plans!inner(status,is_public,provider_sync_status,provider_product_id,tax_code,tax_classification_status)")
       .eq("id", body.price_id)
       .eq("active", true)
       .eq("provider_sync_status", "synced")
@@ -38,10 +41,13 @@ export async function POST(request: Request) {
     if (!price?.provider_price_id) return NextResponse.json({ error: "price_not_available" }, { status: 409 });
     providerPriceId = price.provider_price_id;
     catalogId = price.plan_id;
+    const plan = price.plans as unknown as { tax_code?: string | null; tax_classification_status?: string | null };
+    taxCode = plan.tax_code || null;
+    taxClassificationStatus = plan.tax_classification_status || null;
   } else {
     if (!body?.credit_product_id) return NextResponse.json({ error: "credit_product_required" }, { status: 400 });
     const { data: product } = await admin.schema("billing").from("credit_products")
-      .select("id,provider_product_id,provider_price_id,provider_sync_status,active,credits")
+      .select("id,provider_product_id,provider_price_id,provider_sync_status,active,credits,tax_code,tax_classification_status,tax_behavior")
       .eq("id", body.credit_product_id)
       .eq("active", true)
       .eq("provider_sync_status", "synced")
@@ -50,8 +56,41 @@ export async function POST(request: Request) {
     providerPriceId = product.provider_price_id;
     catalogId = product.id;
     credits = Number(product.credits);
+    taxCode = product.tax_code || null;
+    taxClassificationStatus = product.tax_classification_status || null;
   }
   if (!providerPriceId) return NextResponse.json({ error: "price_not_available" }, { status: 409 });
+
+  const { data: taxSettings, error: taxSettingsError } = await admin.schema("billing").from("tax_settings")
+    .select("automatic_collection_enabled,active_registration_count")
+    .eq("provider", "stripe")
+    .maybeSingle();
+  if (taxSettingsError) return NextResponse.json({ error: "tax_state_unavailable" }, { status: 503 });
+
+  let automaticTaxEnabled = Boolean(taxSettings?.automatic_collection_enabled);
+  if (automaticTaxEnabled) {
+    if (!taxCode || taxClassificationStatus !== "confirmed") {
+      return NextResponse.json({ error: "tax_classification_not_confirmed" }, { status: 409 });
+    }
+    const registrations = await listActiveStripeTaxRegistrations();
+    if (!registrations.length) {
+      await admin.schema("billing").from("tax_settings").update({
+        automatic_collection_enabled: false,
+        active_registration_count: 0,
+        last_registration_check_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }).eq("provider", "stripe");
+      automaticTaxEnabled = false;
+      return NextResponse.json({ error: "tax_registration_missing" }, { status: 409 });
+    }
+    if (registrations.length !== Number(taxSettings?.active_registration_count ?? 0)) {
+      await admin.schema("billing").from("tax_settings").update({
+        active_registration_count: registrations.length,
+        last_registration_check_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }).eq("provider", "stripe");
+    }
+  }
 
   let { data: customer } = await admin.schema("billing").from("billing_customers").select("provider_customer_id").eq("organization_id", ws.organizationId).maybeSingle();
   if (!customer) {
@@ -74,12 +113,23 @@ export async function POST(request: Request) {
   params.set("success_url", `${origin()}/app/billing?checkout=success`);
   params.set("cancel_url", `${origin()}/app/billing?checkout=cancelled`);
   params.set("client_reference_id", ws.organizationId);
+  params.set("integration_identifier", "vexonyx_tax_kqmvzjht");
+  params.set("tax_id_collection[enabled]", "true");
+  params.set("customer_update[address]", "auto");
+  params.set("customer_update[name]", "auto");
+  if (automaticTaxEnabled) params.set("automatic_tax[enabled]", "true");
   params.set("metadata[organization_id]", ws.organizationId);
   params.set("metadata[user_id]", ws.userId);
   params.set("metadata[kind]", kind);
   params.set("metadata[catalog_id]", catalogId || "");
+  params.set("metadata[automatic_tax_enabled]", String(automaticTaxEnabled));
+  params.set("metadata[tax_code]", taxCode || "");
   if (kind === "credit_pack") params.set("metadata[credits]", String(credits));
-  if (kind === "subscription") params.set("subscription_data[metadata][organization_id]", ws.organizationId);
+  if (kind === "subscription") {
+    params.set("subscription_data[metadata][organization_id]", ws.organizationId);
+    params.set("subscription_data[metadata][automatic_tax_enabled]", String(automaticTaxEnabled));
+    params.set("subscription_data[metadata][tax_code]", taxCode || "");
+  }
 
   try {
     const session = await stripeRequest("/checkout/sessions", params, `checkout:${ws.organizationId}:${kind}:${catalogId}:${Date.now()}`);
