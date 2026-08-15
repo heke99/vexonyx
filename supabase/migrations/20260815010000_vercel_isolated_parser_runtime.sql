@@ -256,4 +256,4 @@ revoke all on function artifacts.complete_parser_job(uuid,text,bigint,text,text,
 grant execute on function artifacts.claim_parser_jobs(text,integer,integer) to service_role;
 grant execute on function artifacts.start_parser_job(uuid,text,bigint,text,text,text) to service_role;
 grant execute on function artifacts.apply_file_inspection_result(uuid,uuid,text,text,text,text,text,jsonb,text,uuid) to service_role;
-grant execute on function artifacts.complete_parser_job(uuid,text,bigint,text,text,text,jsonb,jsonb) to service_role;
+grant execute on function artifacts.complete_parser_job(uuid,text,bigint,text,text,jsonb,jsonb) to service_role;
