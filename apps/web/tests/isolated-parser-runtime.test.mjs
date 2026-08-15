@@ -7,7 +7,7 @@ import { spawnSync } from "node:child_process";
 
 const read = (relative) => fs.readFileSync(new URL(relative, import.meta.url), "utf8");
 
-test("Vercel parser sandbox is deny-all, bounded, non-sudo and always stopped", () => {
+test("Vercel parser sandbox is deny-all, bounded, non-sudo and teardown failures propagate", () => {
   const controller = read("../lib/sandbox/vercel-isolated-parser.ts");
   assert.match(controller, /Symbol\.for\("@vercel\/request-context"\)/);
   assert.match(controller, /x-vercel-oidc-token/);
@@ -23,7 +23,10 @@ test("Vercel parser sandbox is deny-all, bounded, non-sudo and always stopped", 
   assert.match(controller, /ports:\s*\[\]/);
   assert.match(controller, /persistent:\s*false/);
   assert.match(controller, /sudo:\s*false/);
-  assert.match(controller, /finally\s*\{[\s\S]*stopSandbox/);
+  assert.match(controller, /async function stopSandbox[\s\S]*?method:\s*"POST"[\s\S]*?"content-type":\s*"application\/json"/);
+  const stopFunction = controller.match(/async function stopSandbox[\s\S]*?\n}\n\nasync function uploadInputs/)?.[0] || "";
+  assert.doesNotMatch(stopFunction, /catch\s*\(/);
+  assert.match(controller, /finally\s*\{[\s\S]*await stopSandbox/);
   assert.doesNotMatch(controller, /publish-port|allowedDomains:\s*\[[^\]]+\]/);
 });
 
@@ -66,12 +69,15 @@ test("bundled Python parser normalizes, compiles and emits bounded JSON", () => 
   }
 });
 
-test("production parser worker runs a low-frequency synthetic Sandbox canary when idle", () => {
+test("production parser canary requires verified teardown before 24-hour health status", () => {
   const parserWorker = read("../app/api/internal/workers/isolated-parser/route.ts");
   assert.match(parserWorker, /VERCEL_ENV !== "production"/);
   assert.match(parserWorker, /VEXONYX_SANDBOX_CANARY/);
   assert.match(parserWorker, /runtime\.isolated_parser_canary/);
-  assert.match(parserWorker, /previousPassed \? 24 \* 60 \* 60 \* 1000 : 15 \* 60 \* 1000/);
+  assert.match(parserWorker, /latestMeta\.status === "passed" && latestMeta\.teardownVerified === true/);
+  assert.match(parserWorker, /previousPassNeedsTeardownVerification/);
+  assert.match(parserWorker, /previousPassNeedsTeardownVerification \? 0 : 15 \* 60 \* 1000/);
+  assert.match(parserWorker, /teardownVerified:\s*true/);
   assert.match(parserWorker, /results\.length === 0 \? await maybeRunSandboxCanary/);
   assert.match(parserWorker, /markerFound/);
 });
