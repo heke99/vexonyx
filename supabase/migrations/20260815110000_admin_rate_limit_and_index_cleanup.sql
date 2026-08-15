@@ -1,6 +1,7 @@
 -- Production hardening discovered during the 2026-08-15 E2E review.
 -- Keep Superadmin authentication rate limits atomic and independent from the growing audit log.
 -- Remove one of two byte-for-byte equivalent parser queue indexes.
+-- Guarantee a single checkout price for each plan/interval/currency tuple.
 
 create table if not exists security.admin_auth_rate_limits (
   scope text not null,
@@ -96,3 +97,9 @@ grant execute on function security.clear_admin_auth_rate_limit(text,text) to ser
 -- Both indexes had the exact same predicate and key order. Keep parser_jobs_claim_idx,
 -- which communicates the runtime purpose used by the claim worker.
 drop index if exists artifacts.parser_jobs_queue_idx;
+
+-- Stripe prices are immutable versions. Only one version may be exposed to customer
+-- checkout for a plan/interval/currency tuple at a time.
+create unique index if not exists plan_prices_one_active_checkout_idx
+  on billing.plan_prices(plan_id, billing_interval, currency)
+  where active;
