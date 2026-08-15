@@ -24,11 +24,11 @@ The production database stores plans, prices, monthly credit entitlements and cr
 
 ## Personal usage
 
-Production migration `20260815142905_user_usage_monthly` adds per-user monthly usage aggregates. The table is RLS-protected so authenticated reads require both the current `auth.uid()` and organization membership. A trigger aggregates new `usage.usage_events`, and historical user-attributed usage is backfilled. Customer `/app/usage` is being updated in PR #28 to show the signed-in user's own usage and monthly credit consumption, while the workspace credit balance remains pooled.
+Production migrations `20260815170114_user_usage_monthly` and `20260815171231_user_credit_monthly` provide per-user monthly resource usage and credit-consumption aggregates. Both tables are RLS-protected so authenticated reads require the current `auth.uid()` and organization membership. Triggers aggregate new usage events and negative usage credit-ledger entries, and historical user-attributed records are backfilled. Customer `/app/usage` reads the aggregates rather than scanning raw monthly ledgers, while the workspace credit balance remains pooled.
 
 ## Billing integrity
 
-Customer Billing reads only active, public, provider-synced offers and now shows the included monthly credits for each plan. Credit-pack webhook grants are being hardened to resolve credits, amount and currency from the authoritative server-side `billing.credit_products` catalog before crediting the ledger. Subscription monthly credits continue to be granted from `billing.plan_entitlements` on successful paid invoices with idempotency protection.
+Customer Billing reads only active, public, provider-synced offers and shows the included monthly credits for each plan. Credit-pack webhook grants resolve credits, amount and currency from the authoritative server-side `billing.credit_products` catalog before crediting the ledger. Subscription monthly credits continue to be granted from `billing.plan_entitlements` on successful paid invoices with idempotency protection.
 
 ## AI/model state
 
@@ -36,4 +36,4 @@ Five aliases exist: `vexonyx-small`, `vexonyx-general`, `vexonyx-security`, `vex
 
 ## Verification
 
-PR #28 functional changes passed lint, typecheck, Node tests, isolated-parser smoke tests, production build and clean Supabase migration replay/db lint/pgTAP in CI run 614. Memory checkpoint commits follow that successful functional run and require one final CI pass before merge.
+The functional PR #28 change set passed lint, typecheck, Node tests, isolated-parser smoke tests, production build and clean Supabase migration replay/db lint/pgTAP before the final production-migration alignment. The exact production-aligned head must pass one final CI run before merge.
