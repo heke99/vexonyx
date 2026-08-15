@@ -1,0 +1,68 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { spawnSync } from "node:child_process";
+
+const read = (relative) => fs.readFileSync(new URL(relative, import.meta.url), "utf8");
+
+test("Vercel parser sandbox is deny-all, bounded, non-sudo and always stopped", () => {
+  const controller = read("../lib/sandbox/vercel-isolated-parser.ts");
+  assert.match(controller, /VERCEL_OIDC_TOKEN/);
+  assert.match(controller, /runtime:\s*"python3\.13"/);
+  assert.match(controller, /vcpus:\s*"1"/);
+  assert.match(controller, /memory:\s*"2048"/);
+  assert.match(controller, /networkPolicy:\s*\{\s*mode:\s*"deny-all"\s*\}/);
+  assert.match(controller, /ports:\s*\[\]/);
+  assert.match(controller, /persistent:\s*false/);
+  assert.match(controller, /sudo:\s*false/);
+  assert.match(controller, /finally\s*\{[\s\S]*stopSandbox/);
+  assert.doesNotMatch(controller, /publish-port|allowedDomains:\s*\[[^\]]+\]/);
+});
+
+test("internal parser workers require shared-secret authorization", () => {
+  const fileWorker = read("../app/api/internal/workers/file-processing/route.ts");
+  const parserWorker = read("../app/api/internal/workers/isolated-parser/route.ts");
+  const auth = read("../lib/workers/internal-auth.ts");
+  assert.match(fileWorker, /isAuthorizedWorkerRequest/);
+  assert.match(parserWorker, /isAuthorizedWorkerRequest/);
+  assert.match(auth, /WORKER_SHARED_SECRET/);
+  assert.match(auth, /CRON_SECRET/);
+  assert.match(auth, /timingSafeEqual/);
+});
+
+test("bundled Python parser normalizes, compiles and emits bounded JSON", () => {
+  const sourceFile = read("../lib/sandbox/parser-source.ts");
+  const match = sourceFile.match(/String\.raw`([\s\S]*)`;\s*$/);
+  assert.ok(match?.[1], "parser source template is present");
+  const python = match[1].replaceAll("\\\\", "\\");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "vx-parser-"));
+  try {
+    const parserPath = path.join(dir, "parser.py");
+    const inputPath = path.join(dir, "sample.txt");
+    const outputPath = path.join(dir, "result.json");
+    fs.writeFileSync(parserPath, python);
+    fs.writeFileSync(inputPath, "authorized security review\nsecond line\n");
+    const compile = spawnSync("python3", ["-m", "py_compile", parserPath], { encoding: "utf8" });
+    assert.equal(compile.status, 0, compile.stderr || "python parser failed to compile");
+    const run = spawnSync("python3", [parserPath, "--input", inputPath, "--mime", "text/plain", "--name", "sample.txt", "--output", outputPath], { encoding: "utf8" });
+    assert.equal(run.status, 0, run.stderr || "python parser failed to run");
+    const result = JSON.parse(fs.readFileSync(outputPath, "utf8"));
+    assert.equal(result.status, "ready");
+    assert.match(result.text, /authorized security review/);
+    assert.equal(result.metadata.network, "deny_all");
+    assert.ok(fs.statSync(outputPath).size < 10 * 1024 * 1024);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("cron schedule wires file, parser, report and export workers without public auth bypass", () => {
+  const config = JSON.parse(read("../../../vercel.json"));
+  const paths = new Set((config.crons || []).map((entry) => entry.path));
+  assert.ok(paths.has("/api/internal/workers/file-processing"));
+  assert.ok(paths.has("/api/internal/workers/isolated-parser"));
+  assert.ok(paths.has("/api/internal/workers/render-reports"));
+  assert.ok(paths.has("/api/internal/workers/marketing-exports"));
+});
