@@ -1,11 +1,39 @@
-# Current state — 2026-08-14
+# Current state — 2026-08-15
 
-VEXONYX pre-GPU product hardening is implemented on branch `agent/pre-gpu-product-hardening` in draft PR #5. The VEXONYX Supabase project is migration-synced through `20260814151030_finalize_upload_retry_safety`.
+VEXONYX is in the pre-GPU production phase. The customer platform, Superadmin, tenant/RLS foundation, projects/files/reports/findings/agents shell, billing/credits/usage architecture, isolated parsing, background workers, report rendering, operational canaries and waitlist flow are implemented. Production runs on Vercel with Supabase as the current PostgreSQL platform. GPU inference, real model deployments and external offensive-tool execution remain intentionally fail-closed.
 
-Implemented before GPU: premium public UI with a richer explicitly synthetic VEXONYX workspace visual; customer-facing copy uses organization/project/workspace terminology rather than internal architecture jargon; waitlist registration, rate limiting, idempotency, email-verification token flow and referral activation after verification; Supabase SSR auth foundation; organizations/projects/workspace UI; RLS plus composite organization referential integrity; project create/rename/archive/restore/duplicate-shell/soft-delete/deleted-project restore/permanent purge; project collaborators; private file upload metadata and quarantine; upload completion creates one idempotent organization-bound file-processing job; executable/magic-byte checks, checksum, strict text validation, bounded chunking and isolated-parser handoff for risky formats; engagements/scope/authorization/findings/evidence/reports; live Agents/Files/Findings/Reports/Usage/Team/Activity/Settings views; generation request/attempt history; AI registry/state/checkpoints; versioned tools; usage/billing readiness; jobs with lease-generation fencing/renewal; fail-closed tool preflight; emergency controls/incident mode; protected superadmin sections; provider-neutral inference/context/memory/queue/tool/usage contracts; deterministic model routing; agent transition and loop rules; context trust boundary and budget packing; hard agent budget evaluation; mock inference; full ADR/runbook set required by v3 pre-GPU architecture; evaluation catalog VEXONYX-EVAL-001..020.
+## Commerce
 
-Verified so far on 2026-08-14: all 45 checked principal v3 tables exist; cross-organization protections and existing RLS/queue/preflight regression foundation remain present; Supabase migrations are applied and version-aligned with the repository; generation-attempt FK performance warning was remediated; upload-finalization has a pgTAP race/idempotency regression test; five model aliases exist but are disabled; model deployment count is 0; external tools, sandbox scheduling and external network execution are disabled; current branch app CI has passed npm ci, lint, typecheck, Node tests and production build. The final branch head must still pass the clean Supabase migration-replay/db-lint/pgTAP job before merge.
+The approved V1 commercial catalog has been created in the connected live Stripe account and synchronized into the production Supabase billing catalog without hardcoding provider IDs into replay migrations.
 
-Intentionally not enabled before this gate: real embeddings, generative GPU inference, GPU checkpoint downloads, active external tool execution, sandbox network execution and GLM escalation. Risky PDF/archive parsing stays fail-closed behind the isolated-parser handoff until that execution boundary is deployed. Later model evaluation, GPU/load and disaster-recovery tests follow the rollout order in MASTER EXECUTION PROMPT v3.0 rather than being pulled ahead of the pre-GPU gate.
+Subscriptions:
 
-Operational configuration note: waitlist email delivery code is provider-neutral and implemented through Resend, but production delivery requires `RESEND_API_KEY` and `WAITLIST_FROM_EMAIL` in the Vercel server environment. Do not claim verification mail delivery is live until those values and a real end-to-end verification are confirmed.
+- Starter: $15/month, 385 credits/month
+- Pro: $29/month, 750 credits/month
+- Operator: $115/month, 3,025 credits/month
+- Max: $200/month, 5,320 credits/month
+
+One-time credit packs:
+
+- $10: 235 credits
+- $25: 606 credits
+- $50: 1,237 credits
+- $100: 2,500 credits
+
+The production database stores plans, prices, monthly credit entitlements and credit products as provider-synced catalog state. Checkout remains fail-closed unless the Vercel runtime has the required Stripe secret and webhook configuration. Automatic Stripe Tax collection is not enabled by this work; tax registrations and product tax treatment must be verified first.
+
+## Personal usage
+
+Production migrations `20260815170114_user_usage_monthly` and `20260815171231_user_credit_monthly` provide per-user monthly resource usage and credit-consumption aggregates. Both tables are RLS-protected so authenticated reads require the current `auth.uid()` and organization membership. Triggers aggregate new usage events and negative usage credit-ledger entries, and historical user-attributed records are backfilled. Customer `/app/usage` reads the aggregates rather than scanning raw monthly ledgers, while the workspace credit balance remains pooled.
+
+## Billing integrity
+
+Customer Billing reads only active, public, provider-synced offers and shows the included monthly credits for each plan. Credit-pack webhook grants resolve credits, amount and currency from the authoritative server-side `billing.credit_products` catalog before crediting the ledger. Subscription monthly credits continue to be granted from `billing.plan_entitlements` on successful paid invoices with idempotency protection.
+
+## AI/model state
+
+Five aliases exist: `vexonyx-small`, `vexonyx-general`, `vexonyx-security`, `vexonyx-reasoning` and `vexonyx-embedding`. Routing rules use Small for metadata, General for normal chat/code/reporting, Security for security workflows/finding validation, and Reasoning as escalation. Model aliases remain disabled and there are no model versions or model deployments in production. The planned physical GPU rollout uses 4× H200, but no GPU deployment should be marked live until model pinning, benchmark, routing, load, canary and rollback gates pass.
+
+## Verification
+
+The functional PR #28 change set passed lint, typecheck, Node tests, isolated-parser smoke tests, production build and clean Supabase migration replay/db lint/pgTAP before the final production-migration alignment. The exact production-aligned head must pass one final CI run before merge.

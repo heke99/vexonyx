@@ -1,9 +1,28 @@
 {
   "project": "VEXONYX",
-  "date": "2026-08-14",
-  "branch": "agent/vexonyx-foundation-v3",
-  "phase": "foundation-marketing-workspace-mock-ai",
-  "status": "IMPLEMENTED_PENDING_CI_DEPLOY_VERIFY",
-  "supabaseMigrationHead": "20260814125944",
-  "next": ["run GitHub CI", "create/deploy Vercel project", "verify waitlist/auth smoke tests", "begin retrieval/file-processing phase"]
+  "date": "2026-08-15",
+  "branch": "agent/commerce-catalog-user-usage-20260815",
+  "phase": "v1-commerce-personal-usage",
+  "status": "IN_PROGRESS",
+  "supabaseMigrationHead": "20260815171231",
+  "pr": 28,
+  "verified": [
+    "live Stripe V1 catalog created",
+    "live Supabase catalog provider-synced",
+    "per-user resource usage aggregation applied with self-only RLS",
+    "per-user credit consumption aggregation applied with self-only RLS",
+    "functional app CI passed",
+    "functional clean migration replay/db lint/pgTAP passed"
+  ],
+  "next": [
+    "run final CI on exact production-aligned migration set",
+    "merge PR #28 if green",
+    "verify production Vercel deployment and /ready",
+    "verify live Stripe/Supabase catalog consistency"
+  ],
+  "externalGates": [
+    "Vercel Stripe runtime secrets/webhook configuration must be verified before claiming checkout live",
+    "Stripe Tax collection must wait for verified registrations and product tax treatment",
+    "GPU deployments remain disabled until GPU rollout and benchmark gate"
+  ]
 }

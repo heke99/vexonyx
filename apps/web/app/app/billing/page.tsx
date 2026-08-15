@@ -34,7 +34,8 @@ export default async function BillingPage() {
   const sub = subscription.data as Record<string, unknown> | null;
   const currentPlan = sub?.plans && typeof sub.plans === "object" ? sub.plans as Record<string, unknown> : null;
   const currentPlanId = typeof sub?.plan_id === "string" ? sub.plan_id : null;
-  const currentAllowances = (entitlements.data ?? []).filter((item) => item.plan_id === currentPlanId);
+  const allEntitlements = entitlements.data ?? [];
+  const currentAllowances = allEntitlements.filter((item) => item.plan_id === currentPlanId);
   const credit = account.data;
 
   return <div className="app-content">
@@ -47,7 +48,12 @@ export default async function BillingPage() {
     </section>
 
     <section className="workspace-card"><header><h2>Subscriptions</h2><span>{sub?.current_period_end ? `Renews / ends ${new Date(String(sub.current_period_end)).toLocaleDateString("en-GB")}` : "Provider-backed checkout"}</span></header>
-      {plans.error ? <div className="empty-state"><b>Plan catalog is unavailable.</b></div> : plans.data?.length ? plans.data.map((price) => { const plan = price.plans as unknown as Record<string, unknown>; const isCurrent = String(plan.id) === currentPlanId; return <div className="project-row" key={price.id}><div><b>{String(plan.name)}{isCurrent ? " · Current" : ""}</b><small>{String(plan.description || "VEXONYX subscription")} · {price.billing_interval}</small></div><div style={{ display: "flex", alignItems: "center", gap: 14 }}><strong>{money(price.unit_amount_minor, price.currency)}</strong>{isCurrent ? <BillingPortalButton /> : <CheckoutButton kind="subscription" id={price.id}>Choose plan</CheckoutButton>}</div></div>; }) : <div className="empty-state"><div><b>No subscription plans are on sale yet.</b><p>Plans only appear after Superadmin has synchronized the Stripe Product and Price and explicitly published the plan.</p></div></div>}
+      {plans.error ? <div className="empty-state"><b>Plan catalog is unavailable.</b></div> : plans.data?.length ? plans.data.map((price) => {
+        const plan = price.plans as unknown as Record<string, unknown>;
+        const isCurrent = String(plan.id) === currentPlanId;
+        const monthlyCredits = Number(allEntitlements.find((item) => item.plan_id === String(plan.id) && item.entitlement_key === "credits.monthly")?.entitlement_value ?? 0);
+        return <div className="project-row" key={price.id}><div><b>{String(plan.name)}{isCurrent ? " · Current" : ""}</b><small>{String(plan.description || "VEXONYX subscription")} · {monthlyCredits.toLocaleString()} credits / month</small></div><div style={{ display: "flex", alignItems: "center", gap: 14 }}><strong>{money(price.unit_amount_minor, price.currency)} / month</strong>{isCurrent ? <BillingPortalButton /> : <CheckoutButton kind="subscription" id={price.id}>Choose plan</CheckoutButton>}</div></div>;
+      }) : <div className="empty-state"><div><b>No subscription plans are on sale yet.</b><p>Plans only appear after Superadmin has synchronized the Stripe Product and Price and explicitly published the plan.</p></div></div>}
     </section>
 
     <section className="workspace-card"><header><h2>Your plan includes</h2><span>{currentPlan ? String(currentPlan.name) : "No active paid plan"}</span></header>

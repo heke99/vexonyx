@@ -31,16 +31,48 @@ export default async function Page() {
   if (!ws?.organizationId) return <div className="app-content"><div className="empty-state"><b>Create an organization first.</b></div></div>;
 
   const month = new Date();
-  month.setUTCDate(1); month.setUTCHours(0,0,0,0);
-  const monthStart = month.toISOString().slice(0,10);
-  const { data, error } = await ws.supabase.schema("usage").from("usage_monthly").select("metric,quantity,cost,updated_at").eq("organization_id", ws.organizationId).eq("month_start", monthStart).order("metric");
-  const totalCost = data?.reduce((sum, item) => sum + Number(item.cost ?? 0), 0) ?? 0;
+  month.setUTCDate(1);
+  month.setUTCHours(0, 0, 0, 0);
+  const monthStart = month.toISOString().slice(0, 10);
+
+  const [usage, creditUsage, account] = await Promise.all([
+    ws.supabase
+      .schema("usage")
+      .from("usage_user_monthly")
+      .select("metric,quantity,updated_at")
+      .eq("organization_id", ws.organizationId)
+      .eq("user_id", ws.userId)
+      .eq("month_start", monthStart)
+      .order("metric"),
+    ws.supabase
+      .schema("usage")
+      .from("credit_user_monthly")
+      .select("credits_consumed")
+      .eq("organization_id", ws.organizationId)
+      .eq("user_id", ws.userId)
+      .eq("month_start", monthStart)
+      .maybeSingle(),
+    ws.supabase
+      .schema("billing")
+      .from("credit_accounts")
+      .select("balance")
+      .eq("organization_id", ws.organizationId)
+      .maybeSingle(),
+  ]);
+
+  const creditsUsed = Number(creditUsage.data?.credits_consumed ?? 0);
+  const gpuUsage = usage.data?.find((item) => item.metric === "gpu_seconds");
+  const hasError = Boolean(usage.error || creditUsage.error);
 
   return <div className="app-content">
-    <div className="app-heading"><div><h1>Usage</h1><p>See how your organization uses AI, files, reports and execution resources. Usage always follows the account that created it.</p></div></div>
-    <section className="metric-grid"><div className="metric"><span>This month</span><strong>{data?.length ?? 0}</strong></div><div className="metric"><span>Tracked cost</span><strong>{totalCost.toFixed(2)}</strong></div><div className="metric"><span>GPU usage</span><strong>{data?.find((x) => x.metric === "gpu_seconds") ? quantity("gpu_seconds", data.find((x) => x.metric === "gpu_seconds")?.quantity) : "0"}</strong></div></section>
-    <section className="workspace-card"><header><h2>Current month</h2><span>{monthStart}</span></header>
-      {error ? <div className="empty-state"><div><b>Usage could not be loaded.</b><p>Try again. No usage records have been changed.</p></div></div> : data?.length ? data.map((item) => <div className="project-row" key={item.metric}><div><b>{labels[item.metric] ?? item.metric.replaceAll("_", " ")}</b><small>Updated {new Date(item.updated_at).toLocaleString("en-GB")}</small></div><span>{quantity(item.metric, item.quantity)}</span></div>) : <div className="empty-state"><div><b>No measured usage this month.</b><p>Usage will appear here as workspace features are used. GPU usage remains zero before model deployment.</p></div></div>}
+    <div className="app-heading"><div><h1>Your usage</h1><p>Your personal AI, agent, tool, file and execution usage for this workspace. Usage is attributed to the user who created it; the credit balance remains shared by the workspace.</p></div></div>
+    <section className="metric-grid">
+      <div className="metric"><span>Credits used this month</span><strong>{creditsUsed.toLocaleString()}</strong></div>
+      <div className="metric"><span>GPU usage</span><strong>{gpuUsage ? quantity("gpu_seconds", gpuUsage.quantity) : "0"}</strong></div>
+      <div className="metric"><span>Shared credits available</span><strong>{Number(account.data?.balance ?? 0).toLocaleString()}</strong></div>
+    </section>
+    <section className="workspace-card"><header><h2>Your current month</h2><span>{monthStart}</span></header>
+      {hasError ? <div className="empty-state"><div><b>Your usage could not be loaded.</b><p>Try again. No usage or credit records have been changed.</p></div></div> : usage.data?.length ? usage.data.map((item) => <div className="project-row" key={item.metric}><div><b>{labels[item.metric] ?? item.metric.replaceAll("_", " ")}</b><small>Updated {new Date(item.updated_at).toLocaleString("en-GB")}</small></div><span>{quantity(item.metric, item.quantity)}</span></div>) : <div className="empty-state"><div><b>No measured usage this month.</b><p>Your usage will appear here as you use workspace features. GPU usage remains zero before model deployment.</p></div></div>}
     </section>
   </div>;
 }

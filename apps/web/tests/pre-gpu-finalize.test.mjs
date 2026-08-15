@@ -30,6 +30,42 @@ test("credit values are versioned and customer-visible from one catalog", () => 
   assert.match(adminPage, /Usage-rate history/);
   assert.match(customerPage, /How credits are used/);
   assert.match(customerPage, /plan_entitlements/);
+  assert.match(customerPage, /credits \/ month/);
+});
+
+test("each user gets self-scoped monthly resource and credit usage", () => {
+  const usagePage = read("../app/app/usage/page.tsx");
+  const usageMigration = read("../../../supabase/migrations/20260815170114_user_usage_monthly.sql");
+  const creditMigration = read("../../../supabase/migrations/20260815171231_user_credit_monthly.sql");
+  assert.match(usagePage, /usage_user_monthly/);
+  assert.match(usagePage, /credit_user_monthly/);
+  assert.match(usagePage, /\.eq\("user_id", ws\.userId\)/);
+  assert.match(usagePage, /Credits used this month/);
+  assert.doesNotMatch(usagePage, /from\("credit_ledger"\)/);
+  assert.match(usageMigration, /usage\.usage_user_monthly/);
+  assert.match(usageMigration, /user_id = auth\.uid\(\)/);
+  assert.match(usageMigration, /operations\.is_org_member\(organization_id\)/);
+  assert.match(usageMigration, /aggregate_user_usage_event/);
+  assert.match(usageMigration, /set search_path = ''/i);
+  assert.match(creditMigration, /usage\.credit_user_monthly/);
+  assert.match(creditMigration, /user_id = auth\.uid\(\)/);
+  assert.match(creditMigration, /operations\.is_org_member\(organization_id\)/);
+  assert.match(creditMigration, /aggregate_user_credit_usage/);
+  assert.match(creditMigration, /new\.entry_type = 'usage'/);
+  assert.match(creditMigration, /set search_path = ''/i);
+});
+
+test("billing webhooks use authoritative catalog data and tolerate Stripe event reordering", () => {
+  const webhook = read("../app/api/v1/billing/webhook/route.ts");
+  assert.match(webhook, /credit_products/);
+  assert.match(webhook, /metadata\.catalog_id/);
+  assert.match(webhook, /credit_product_amount_mismatch/);
+  assert.match(webhook, /credit_product_currency_mismatch/);
+  assert.match(webhook, /p_amount:purchasedCredits/);
+  assert.doesNotMatch(webhook, /const credits=Number\(metadata\.credits/);
+  assert.match(webhook, /loadStripeSubscriptionPlan/);
+  assert.match(webhook, /if\(!planId&&providerSubscriptionId\)/);
+  assert.match(webhook, /invoice-credit:/);
 });
 
 test("marketing exports use dedicated leased retries, private storage and a self-cleaning canary", () => {
