@@ -68,6 +68,54 @@ test("billing webhooks use authoritative catalog data and tolerate Stripe event 
   assert.match(webhook, /invoice-credit:/);
 });
 
+test("tax-ready commerce records tax state without pretending collection is active", () => {
+  const migration = read("../../../supabase/migrations/20260815182411_tax_ready_commerce.sql");
+  const defaults = read("../../../supabase/migrations/20260815182858_tax_candidate_defaults.sql");
+  const checkout = read("../app/api/v1/billing/checkout/route.ts");
+  const webhook = read("../app/api/v1/billing/webhook/route.ts");
+  const taxActions = read("../app/admin/tax-actions.ts");
+  const taxPage = read("../app/admin/tax/page.tsx");
+  const stripe = read("../lib/billing/stripe.ts");
+  const ready = read("../app/ready/route.ts");
+
+  assert.match(migration, /billing\.tax_settings/);
+  assert.match(migration, /automatic_collection_enabled boolean not null default false/);
+  assert.match(migration, /revoke all on billing\.tax_settings from public, anon, authenticated/);
+  assert.match(migration, /tax_status text not null default 'not_calculated'/);
+  assert.match(migration, /subtotal_minor bigint/);
+  assert.match(migration, /tax_minor bigint/);
+  assert.match(migration, /total_minor bigint/);
+  assert.match(defaults, /txcd_10105002/);
+
+  assert.match(checkout, /tax_id_collection\[enabled\]/);
+  assert.match(checkout, /customer_update\[address\]/);
+  assert.match(checkout, /customer_update\[name\]/);
+  assert.match(checkout, /listActiveStripeTaxRegistrations/);
+  assert.match(checkout, /taxClassificationStatus !== "confirmed"/);
+  assert.match(checkout, /if \(automaticTaxEnabled\) params\.set\("automatic_tax\[enabled\]", "true"\)/);
+  assert.doesNotMatch(checkout, /params\.set\("automatic_tax\[enabled\]", "true"\);\s*params\.set\("metadata/);
+
+  assert.match(webhook, /taxSnapshot/);
+  assert.match(webhook, /syncBillingCustomer/);
+  assert.match(webhook, /subtotal_minor:tax\.subtotal/);
+  assert.match(webhook, /tax_minor:tax\.tax/);
+  assert.match(webhook, /total_minor:tax\.total/);
+  assert.match(webhook, /automatic_tax_enabled/);
+
+  assert.match(taxActions, /retrieveStripeTaxCode/);
+  assert.match(taxActions, /No active Stripe Tax registration exists/);
+  assert.match(taxActions, /tax_classification_status !== "confirmed"/);
+  assert.doesNotMatch(taxActions, /tax\/registrations.*POST/i);
+  assert.match(taxPage, /No automatic registrations/);
+  assert.match(taxPage, /prepaid, restricted VEXONYX usage/);
+
+  assert.match(stripe, /params\.set\("tax_behavior", input\.taxBehavior \|\| "exclusive"\)/);
+  assert.match(stripe, /retrieveStripeTaxCode/);
+  assert.match(stripe, /listActiveStripeTaxRegistrations/);
+  assert.match(ready, /taxInfrastructureConfig/);
+  assert.match(ready, /taxCollectionConfig/);
+});
+
 test("marketing exports use dedicated leased retries, private storage and a self-cleaning canary", () => {
   const action = read("../app/admin/audience-actions.ts");
   const worker = read("../app/api/internal/workers/marketing-exports/route.ts");
@@ -103,6 +151,8 @@ test("report renderer continuously canaries real PDF and DOCX via private storag
   assert.match(worker, /renderDocx/);
   assert.match(worker, /runtime\.report_renderer_canary/);
   assert.match(worker, /storageRoundTrip/);
+  assert.match(worker, /runtime\.report_renderer_canary/);
+  assert.match(worker, /storageRoundTrip/);
   assert.match(worker, /cleanupVerified/);
   assert.match(worker, /project-artifacts/);
   assert.match(worker, /validPdf/);
@@ -115,6 +165,7 @@ test("provider-synced offers remain fail-closed in customer commerce", () => {
   assert.match(customerPage, /provider_sync_status/);
   assert.match(customerPage, /No subscription plans are on sale yet/);
   assert.match(customerPage, /No credit packs are active/);
+  assert.match(customerPage, /plus applicable tax/);
   assert.match(migration, /plan_prices_checkout_ready_check/);
   assert.match(migration, /credit_products_checkout_ready_check/);
 });
