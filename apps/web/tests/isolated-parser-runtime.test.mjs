@@ -21,15 +21,17 @@ test("Vercel parser sandbox is deny-all, bounded, non-sudo and always stopped", 
   assert.doesNotMatch(controller, /publish-port|allowedDomains:\s*\[[^\]]+\]/);
 });
 
-test("internal parser workers require shared-secret authorization", () => {
+test("internal workers accept only environment secrets or service-verified scheduler tokens", () => {
   const fileWorker = read("../app/api/internal/workers/file-processing/route.ts");
   const parserWorker = read("../app/api/internal/workers/isolated-parser/route.ts");
   const auth = read("../lib/workers/internal-auth.ts");
-  assert.match(fileWorker, /isAuthorizedWorkerRequest/);
-  assert.match(parserWorker, /isAuthorizedWorkerRequest/);
+  assert.match(fileWorker, /await isAuthorizedWorkerRequest\(request, admin\)/);
+  assert.match(parserWorker, /await isAuthorizedWorkerRequest\(request, admin\)/);
   assert.match(auth, /WORKER_SHARED_SECRET/);
   assert.match(auth, /CRON_SECRET/);
   assert.match(auth, /timingSafeEqual/);
+  assert.match(auth, /schema\("security"\)\.rpc\("verify_worker_token"/);
+  assert.doesNotMatch(auth, /x-vercel-cron/i);
 });
 
 test("bundled Python parser normalizes, compiles and emits bounded JSON", () => {
@@ -68,11 +70,16 @@ test("production parser worker runs a low-frequency synthetic Sandbox canary whe
   assert.match(parserWorker, /markerFound/);
 });
 
-test("cron schedule wires file, parser, report and export workers without public auth bypass", () => {
+test("Vercel crons are removed because production scheduling is Vault-backed in Supabase", () => {
   const config = JSON.parse(read("../../../vercel.json"));
-  const paths = new Set((config.crons || []).map((entry) => entry.path));
-  assert.ok(paths.has("/api/internal/workers/file-processing"));
-  assert.ok(paths.has("/api/internal/workers/isolated-parser"));
-  assert.ok(paths.has("/api/internal/workers/render-reports"));
-  assert.ok(paths.has("/api/internal/workers/marketing-exports"));
+  assert.ok(!config.crons || config.crons.length === 0);
+  const migration = read("../../../supabase/migrations/20260815014500_supabase_worker_scheduler.sql");
+  assert.match(migration, /create extension if not exists pg_net/);
+  assert.match(migration, /create extension if not exists pg_cron/);
+  assert.match(migration, /vault\.create_secret/);
+  assert.match(migration, /vexonyx_worker_scheduler_token/);
+  assert.match(migration, /security\.verify_worker_token/);
+  assert.match(migration, /security\.invoke_worker/);
+  assert.match(migration, /vexonyx-isolated-parser/);
+  assert.match(migration, /enabled boolean not null default false/);
 });
