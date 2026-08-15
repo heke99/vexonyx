@@ -7,18 +7,41 @@ const API = "https://api.vercel.com/v2/sandboxes";
 const CWD = "/vercel/sandbox";
 
 type SandboxSession = { id: string; runtime?: string; region?: string; networkPolicy?: { mode?: string }; memory?: string | number; vcpus?: string | number };
+type VercelRequestContext = { headers?: Record<string, string> };
+type VercelOidcClaims = { project_id?: unknown };
 export type ParserPayload = { status: "ready" | "blocked" | "failed"; text?: string; metadata?: Record<string, unknown>; error_code?: string; detail?: string };
 
+function requestContextOidcToken() {
+  const key = Symbol.for("@vercel/request-context");
+  const carrier = (globalThis as unknown as Record<symbol, { get?: () => VercelRequestContext } | undefined>)[key];
+  const value = carrier?.get?.()?.headers?.["x-vercel-oidc-token"];
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
 function token() {
-  const value = process.env.VERCEL_OIDC_TOKEN || process.env.VERCEL_SANDBOX_TOKEN;
+  const value = requestContextOidcToken() || process.env.VERCEL_OIDC_TOKEN || process.env.VERCEL_SANDBOX_TOKEN;
   if (!value) throw new Error("sandbox_identity_unavailable");
   return value;
 }
 
+function projectIdFromOidc(value: string) {
+  const payloadPart = value.split(".")[1];
+  if (!payloadPart) return null;
+  try {
+    const payload = JSON.parse(Buffer.from(payloadPart, "base64url").toString("utf8")) as VercelOidcClaims;
+    const candidate = payload.project_id;
+    return typeof candidate === "string" && /^prj_[A-Za-z0-9]+$/.test(candidate) ? candidate : null;
+  } catch {
+    return null;
+  }
+}
+
 function projectId() {
-  const value = process.env.VERCEL_PROJECT_ID;
-  if (!value) throw new Error("sandbox_project_identity_unavailable");
-  return value;
+  const explicit = process.env.VERCEL_PROJECT_ID;
+  if (explicit) return explicit;
+  const derived = projectIdFromOidc(token());
+  if (!derived) throw new Error("sandbox_project_identity_unavailable");
+  return derived;
 }
 
 async function api(path: string, init: RequestInit) {
