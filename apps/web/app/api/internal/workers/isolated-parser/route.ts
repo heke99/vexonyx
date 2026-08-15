@@ -7,6 +7,68 @@ import { isAuthorizedWorkerRequest } from "@/lib/workers/internal-auth";
 
 export const maxDuration = 300;
 
+const CANARY_MARKER = "VEXONYX_SANDBOX_CANARY";
+const CANARY_PDF = new TextEncoder().encode(`%PDF-1.4\n1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj\n3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Contents 4 0 R >> endobj\n4 0 obj << /Length 45 >> stream\nBT /F1 12 Tf 10 100 Td (${CANARY_MARKER}) Tj ET\nendstream endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n`);
+
+type AdminClient = NonNullable<ReturnType<typeof createAdminClient>>;
+
+async function maybeRunSandboxCanary(admin: AdminClient) {
+  if (process.env.VERCEL_ENV !== "production") return { status: "skipped_nonproduction" };
+  const latest = await admin.schema("audit").from("audit_logs")
+    .select("created_at,metadata")
+    .eq("action", "runtime.isolated_parser_canary")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const latestAt = latest.data?.created_at ? new Date(latest.data.created_at).getTime() : 0;
+  const latestMeta = latest.data?.metadata && typeof latest.data.metadata === "object" ? latest.data.metadata as Record<string, unknown> : {};
+  const previousPassed = latestMeta.status === "passed";
+  const minimumIntervalMs = previousPassed ? 24 * 60 * 60 * 1000 : 15 * 60 * 1000;
+  if (latestAt && Date.now() - latestAt < minimumIntervalMs) return { status: "skipped_recent", previous: latestMeta.status || "unknown" };
+
+  const canaryId = `canary-${randomUUID()}`;
+  try {
+    const execution = await runVercelIsolatedParser({
+      jobId: canaryId,
+      bytes: CANARY_PDF,
+      mime: "application/pdf",
+      originalName: "vexonyx-sandbox-canary.pdf",
+      maxCpuSeconds: 20,
+      maxWallSeconds: 20,
+      maxOutputBytes: 1024 * 1024,
+    });
+    const passed = execution.result.status === "ready" && typeof execution.result.text === "string" && execution.result.text.includes(CANARY_MARKER);
+    const metadata = {
+      status: passed ? "passed" : "failed",
+      markerFound: passed,
+      parserStatus: execution.result.status,
+      sandbox: execution.sandbox,
+      checkedAt: new Date().toISOString(),
+    };
+    await admin.schema("audit").from("audit_logs").insert({
+      actor_type: "system",
+      action: "runtime.isolated_parser_canary",
+      resource_type: "sandbox",
+      request_id: canaryId,
+      metadata,
+    });
+    if (!passed) console.error("isolated_parser_canary_failed", metadata);
+    return metadata;
+  } catch (error) {
+    const reason = error instanceof Error ? error.message.slice(0, 300) : "sandbox_canary_failed";
+    const metadata = { status: "failed", reason, checkedAt: new Date().toISOString() };
+    await admin.schema("audit").from("audit_logs").insert({
+      actor_type: "system",
+      action: "runtime.isolated_parser_canary",
+      resource_type: "sandbox",
+      request_id: canaryId,
+      metadata,
+    });
+    console.error("isolated_parser_canary_error", metadata);
+    return metadata;
+  }
+}
+
 export async function POST(request: Request) {
   if (!isAuthorizedWorkerRequest(request)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const admin = createAdminClient();
@@ -89,7 +151,8 @@ export async function POST(request: Request) {
     }
   }
 
-  return NextResponse.json({ processed: results.length, results }, { headers: { "cache-control": "no-store" } });
+  const canary = results.length === 0 ? await maybeRunSandboxCanary(admin) : { status: "skipped_busy" };
+  return NextResponse.json({ processed: results.length, results, canary }, { headers: { "cache-control": "no-store" } });
 }
 
 export async function GET(request: Request) { return POST(request); }
