@@ -55,7 +55,7 @@ test("each user gets self-scoped monthly resource and credit usage", () => {
   assert.match(creditMigration, /set search_path = ''/i);
 });
 
-test("credit pack webhooks resolve authoritative credits from the server catalog", () => {
+test("billing webhooks use authoritative catalog data and tolerate Stripe event reordering", () => {
   const webhook = read("../app/api/v1/billing/webhook/route.ts");
   assert.match(webhook, /credit_products/);
   assert.match(webhook, /metadata\.catalog_id/);
@@ -63,6 +63,9 @@ test("credit pack webhooks resolve authoritative credits from the server catalog
   assert.match(webhook, /credit_product_currency_mismatch/);
   assert.match(webhook, /p_amount:purchasedCredits/);
   assert.doesNotMatch(webhook, /const credits=Number\(metadata\.credits/);
+  assert.match(webhook, /loadStripeSubscriptionPlan/);
+  assert.match(webhook, /if\(!planId&&providerSubscriptionId\)/);
+  assert.match(webhook, /invoice-credit:/);
 });
 
 test("marketing exports use dedicated leased retries, private storage and a self-cleaning canary", () => {
