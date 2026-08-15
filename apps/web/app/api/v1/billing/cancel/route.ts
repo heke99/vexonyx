@@ -48,11 +48,6 @@ export async function POST() {
     const saved = await admin.schema("billing").from("subscriptions").update({
       cancel_at_period_end: true,
       current_period_end: providerPeriodEnd,
-      metadata: {
-        cancellation_source: "self_service",
-        cancellation_requested_by: ws.userId,
-        cancellation_requested_at: new Date().toISOString(),
-      },
     }).eq("organization_id", ws.organizationId);
     if (saved.error) return NextResponse.json({ error: "cancellation_state_failed" }, { status: 500 });
 
