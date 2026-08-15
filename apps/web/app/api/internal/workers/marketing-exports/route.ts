@@ -20,7 +20,7 @@ export async function POST(request:Request){
   try{
    const exportRow=await admin.schema("marketing").from("exports").select("id,export_type,filters,status").eq("id",exportId).maybeSingle();if(exportRow.error||!exportRow.data)throw new Error("marketing_export_not_found");
    if(exportRow.data.status==="ready"){await admin.schema("operations").rpc("finish_job",{p_job_id:jobId,p_worker_id:workerId,p_lease_generation:generation,p_success:true,p_error:null});results.push({id:exportId,status:"ready",idempotent:true});continue;}
-   await admin.schema("marketing").from("exports").update({status:"running",error_code:null,completed_at:null}).eq("id",exportId);
+   const running=await admin.schema("marketing").from("exports").update({status:"running",error_code:null,completed_at:null}).eq("id",exportId);if(running.error)throw running.error;
    let rows:Record<string,unknown>[]=[];let columns:string[]=[];
    if(exportRow.data.export_type==="waitlist"){const q=await admin.schema("launch").from("waitlist_entries").select("email,name,company,job_role,country,source,status,email_verified_at,invited_at,created_at").order("created_at");if(q.error)throw q.error;rows=(q.data??[]) as Record<string,unknown>[];columns=["email","name","company","job_role","country","source","status","email_verified_at","invited_at","created_at"];}
    else if(exportRow.data.export_type==="users"){const q=await admin.schema("app").rpc("superadmin_user_directory",{p_query:null,p_limit:100000,p_offset:0});if(q.error)throw q.error;rows=(q.data??[]) as Record<string,unknown>[];columns=["id","email","display_name","is_superadmin","organization_count","account_created_at","last_sign_in_at","is_suspended"];}
@@ -28,8 +28,8 @@ export async function POST(request:Request){
    else if(exportRow.data.export_type==="audience"){const q=await admin.schema("marketing").from("audience_members").select("email,name,company,lifecycle_stage,marketing_consent,marketing_consent_at,unsubscribed_at,source,created_at").order("created_at");if(q.error)throw q.error;rows=(q.data??[]) as Record<string,unknown>[];columns=["email","name","company","lifecycle_stage","marketing_consent","marketing_consent_at","unsubscribed_at","source","created_at"];}
    else throw new Error("unsupported_export_type");
    const content=Buffer.from(csv(rows,columns),"utf8");const path=`exports/${exportId}.csv`;const upload=await admin.storage.from("admin-exports").upload(path,content,{contentType:"text/csv",cacheControl:"private, max-age=0",upsert:true});if(upload.error)throw upload.error;
-   const finished=await admin.schema("operations").rpc("finish_job",{p_job_id:jobId,p_worker_id:workerId,p_lease_generation:generation,p_success:true,p_error:null});if(finished.error||finished.data!==true)throw new Error("marketing_export_lease_lost");
    const expires=new Date(Date.now()+24*60*60*1000).toISOString();const done=await admin.schema("marketing").from("exports").update({status:"ready",storage_path:path,row_count:rows.length,expires_at:expires,completed_at:new Date().toISOString(),error_code:null}).eq("id",exportId);if(done.error)throw done.error;
+   const finished=await admin.schema("operations").rpc("finish_job",{p_job_id:jobId,p_worker_id:workerId,p_lease_generation:generation,p_success:true,p_error:null});if(finished.error||finished.data!==true)throw new Error("marketing_export_lease_lost");
    results.push({id:exportId,status:"ready",rows:rows.length,attempt});
   }catch(e){
    const reason=e instanceof Error?e.message.slice(0,120):"export_failed";const failed=await admin.schema("operations").rpc("finish_job",{p_job_id:jobId,p_worker_id:workerId,p_lease_generation:generation,p_success:false,p_error:{code:reason}});const terminal=attempt>=5||failed.error||failed.data!==true;
