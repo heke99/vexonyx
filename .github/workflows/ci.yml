@@ -19,6 +19,22 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run test
+      - name: Isolated parser safety smoke tests
+        run: |
+          set -euo pipefail
+          printf 'authorized security report\n' > /tmp/vexonyx-safe.txt
+          python3 services/isolated-parser/parser.py --input /tmp/vexonyx-safe.txt --mime text/plain --name safe.txt | grep '"status":"ready"'
+          python3 - <<'PY'
+          import zipfile
+          with zipfile.ZipFile('/tmp/vexonyx-traversal.zip','w') as z:
+              z.writestr('../escape.txt','blocked')
+          PY
+          set +e
+          python3 services/isolated-parser/parser.py --input /tmp/vexonyx-traversal.zip --mime application/zip --name traversal.zip > /tmp/parser-blocked.json
+          code=$?
+          set -e
+          test "$code" -eq 2
+          grep '"status":"blocked"' /tmp/parser-blocked.json
       - run: npm run build
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://trwwicnqnudllbeldsib.supabase.co

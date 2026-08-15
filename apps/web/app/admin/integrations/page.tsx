@@ -1,0 +1,13 @@
+import { requireSuperadmin } from "@/lib/admin/guard";
+
+export default async function AdminIntegrationsPage(){
+ const {admin}=await requireSuperadmin();
+ const [catalog,installs]=await Promise.all([
+  admin.schema("integrations").from("catalog").select("id,slug,kind,name,auth_type,capabilities,required_scopes,status,updated_at").order("kind").order("name"),
+  admin.schema("integrations").from("installations").select("id,organization_id,catalog_id,status,display_name,provider_account_ref,granted_scopes,last_success_at,last_error_code,updated_at").order("updated_at",{ascending:false}).limit(500)
+ ]);
+ return <div className="admin-page"><div className="admin-heading"><div className="admin-heading-copy"><div className="admin-eyebrow">VEXONYX / PRODUCT</div><h1>Connectors & plugins</h1><p>Catalog, installation health and organization scope. Credential material is intentionally absent from this view.</p></div></div>
+ <section className="admin-card"><div className="admin-card-header"><h2>Catalog</h2><span>{catalog.data?.length??0}</span></div><div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Integration</th><th>Type</th><th>Auth</th><th>Capabilities</th><th>Status</th></tr></thead><tbody>{(catalog.data??[]).map(c=><tr key={c.id}><td><b>{c.name}</b><small>{c.slug}</small></td><td>{c.kind}</td><td>{c.auth_type}</td><td>{(c.capabilities??[]).join(", ")||"—"}</td><td>{c.status}</td></tr>)}</tbody></table></div></section>
+ <section className="admin-card"><div className="admin-card-header"><h2>Installations</h2><span>{installs.data?.length??0}</span></div><div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Organization</th><th>Integration</th><th>Status</th><th>Scopes</th><th>Last success</th><th>Error</th></tr></thead><tbody>{(installs.data??[]).map(i=><tr key={i.id}><td>{i.organization_id}</td><td>{catalog.data?.find(c=>c.id===i.catalog_id)?.name||i.catalog_id}</td><td>{i.status}</td><td>{(i.granted_scopes??[]).join(", ")||"—"}</td><td>{i.last_success_at?new Date(i.last_success_at).toLocaleString("en-GB"):"—"}</td><td>{i.last_error_code||"—"}</td></tr>)}</tbody></table></div></section>
+ <section className="admin-card"><div className="admin-card-header"><h2>Security invariants</h2><span>Always enforced</span></div><div className="admin-card-body admin-health"><div className="admin-health-row"><span>Credentials visible in UI</span><b>No</b></div><div className="admin-health-row"><span>Credentials stored in installation rows</span><b>No</b></div><div className="admin-health-row"><span>Agent may exceed granted scopes</span><b>No</b></div><div className="admin-health-row"><span>External actions pre-GPU</span><b>Disabled</b></div></div></section></div>
+}
