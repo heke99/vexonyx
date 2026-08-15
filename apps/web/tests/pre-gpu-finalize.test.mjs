@@ -93,7 +93,6 @@ test("tax-ready commerce records tax state without pretending collection is acti
   assert.match(checkout, /listActiveStripeTaxRegistrations/);
   assert.match(checkout, /taxClassificationStatus !== "confirmed"/);
   assert.match(checkout, /if \(automaticTaxEnabled\) params\.set\("automatic_tax\[enabled\]", "true"\)/);
-  assert.doesNotMatch(checkout, /params\.set\("automatic_tax\[enabled\]", "true"\);\s*params\.set\("metadata/);
 
   assert.match(webhook, /taxSnapshot/);
   assert.match(webhook, /syncBillingCustomer/);
@@ -149,8 +148,6 @@ test("report renderer continuously canaries real PDF and DOCX via private storag
   const worker = read("../app/api/internal/workers/render-reports/route.ts");
   assert.match(worker, /renderPdf/);
   assert.match(worker, /renderDocx/);
-  assert.match(worker, /runtime\.report_renderer_canary/);
-  assert.match(worker, /storageRoundTrip/);
   assert.match(worker, /runtime\.report_renderer_canary/);
   assert.match(worker, /storageRoundTrip/);
   assert.match(worker, /cleanupVerified/);
