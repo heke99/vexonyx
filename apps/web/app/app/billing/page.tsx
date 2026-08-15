@@ -1,5 +1,5 @@
 import { getWorkspace } from "@/lib/workspace";
-import { CheckoutButton, BillingPortalButton, CancelSubscriptionButton } from "@/components/billing-actions";
+import { CheckoutButton, CancelSubscriptionButton } from "@/components/billing-actions";
 
 function money(minor: unknown, currency: unknown) {
   const amount = Number(minor ?? 0) / 100;
@@ -40,9 +40,10 @@ export default async function BillingPage() {
   const canManageBilling = ws.role === "organization_owner" || ws.role === "organization_admin";
   const periodEnd = typeof sub?.current_period_end === "string" ? sub.current_period_end : null;
   const cancellationScheduled = Boolean(sub?.cancel_at_period_end);
+  const billingOnly = <span style={{ fontSize: 10, color: "#747b85" }}>Owner/admin only</span>;
 
   return <div className="app-content">
-    <div className="app-heading"><div><h1>Plan & credits</h1><p>Your plan, credits, limits and usage rates come from the same server-side catalog that Superadmin controls. Prices are shown before applicable sales tax, VAT or GST. Where VEXONYX is registered to collect tax, Stripe calculates it from your checkout location and tax details. Purchases require explicit acceptance of the Terms, Acceptable Use Policy and Refund & Cancellation Policy.</p></div><div style={{ display: "flex", gap: 8, alignItems: "center" }}>{canManageBilling && currentPlan && !cancellationScheduled ? <CancelSubscriptionButton periodEnd={periodEnd} /> : null}{canManageBilling ? <BillingPortalButton /> : null}</div></div>
+    <div className="app-heading"><div><h1>Plan & credits</h1><p>Your plan, credits, limits and usage rates come from the same server-side catalog that Superadmin controls. Prices are shown before applicable sales tax, VAT or GST. Where VEXONYX is registered to collect tax, Stripe calculates it from your checkout location and tax details. Purchases require explicit acceptance of the Terms, Acceptable Use Policy and Refund & Cancellation Policy.</p></div>{canManageBilling && currentPlan && !cancellationScheduled ? <CancelSubscriptionButton periodEnd={periodEnd} /> : null}</div>
     <section className="metric-grid">
       <div className="metric"><span>Current plan</span><strong style={{ fontSize: 22 }}>{String(currentPlan?.name || "No paid plan")}</strong></div>
       <div className="metric"><span>Subscription</span><strong style={{ fontSize: 22 }}>{cancellationScheduled ? "cancels at period end" : String(sub?.status || "inactive")}</strong></div>
@@ -55,7 +56,7 @@ export default async function BillingPage() {
         const plan = price.plans as unknown as Record<string, unknown>;
         const isCurrent = String(plan.id) === currentPlanId;
         const monthlyCredits = Number(allEntitlements.find((item) => item.plan_id === String(plan.id) && item.entitlement_key === "credits.monthly")?.entitlement_value ?? 0);
-        return <div className="project-row" key={price.id}><div><b>{String(plan.name)}{isCurrent ? " · Current" : ""}</b><small>{String(plan.description || "VEXONYX subscription")} · {monthlyCredits.toLocaleString()} credits / month · automatically renews monthly until cancelled · plus applicable tax</small></div><div style={{ display: "flex", alignItems: "center", gap: 14 }}><strong>{money(price.unit_amount_minor, price.currency)} / month</strong>{isCurrent ? <span style={{ fontSize: 11, color: "#8b929c" }}>{cancellationScheduled ? "Renewal stopped" : "Active"}</span> : <CheckoutButton kind="subscription" id={price.id}>Choose plan</CheckoutButton>}</div></div>;
+        return <div className="project-row" key={price.id}><div><b>{String(plan.name)}{isCurrent ? " · Current" : ""}</b><small>{String(plan.description || "VEXONYX subscription")} · {monthlyCredits.toLocaleString()} credits / month · automatically renews monthly until cancelled · plus applicable tax</small></div><div style={{ display: "flex", alignItems: "center", gap: 14 }}><strong>{money(price.unit_amount_minor, price.currency)} / month</strong>{isCurrent ? <span style={{ fontSize: 11, color: "#8b929c" }}>{cancellationScheduled ? "Renewal stopped" : "Active"}</span> : canManageBilling ? <CheckoutButton kind="subscription" id={price.id}>Choose plan</CheckoutButton> : billingOnly}</div></div>;
       }) : <div className="empty-state"><div><b>No subscription plans are on sale yet.</b><p>Plans only appear after Superadmin has synchronized the Stripe Product and Price and explicitly published the plan.</p></div></div>}
     </section>
 
@@ -64,12 +65,13 @@ export default async function BillingPage() {
     </section>
 
     <section className="workspace-card"><header><h2>Credit packs</h2><span>One-time purchases · non-refundable except where required by law</span></header>
-      {credits.data?.length ? credits.data.map((item) => <div className="project-row" key={item.id}><div><b>{item.name}</b><small>{Number(item.credits).toLocaleString()} credits · {item.description || "Additional usage credits"} · no cash redemption value · plus applicable tax</small></div><div style={{ display: "flex", alignItems: "center", gap: 14 }}><strong>{money(item.unit_amount_minor, item.currency)}</strong><CheckoutButton kind="credit_pack" id={item.id}>Buy credits</CheckoutButton></div></div>) : <div className="empty-state"><div><b>No credit packs are active.</b><p>Credit packs appear only after Stripe Product + Price synchronization and explicit activation.</p></div></div>}
+      {credits.data?.length ? credits.data.map((item) => <div className="project-row" key={item.id}><div><b>{item.name}</b><small>{Number(item.credits).toLocaleString()} credits · {item.description || "Additional usage credits"} · no cash redemption value · plus applicable tax</small></div><div style={{ display: "flex", alignItems: "center", gap: 14 }}><strong>{money(item.unit_amount_minor, item.currency)}</strong>{canManageBilling ? <CheckoutButton kind="credit_pack" id={item.id}>Buy credits</CheckoutButton> : billingOnly}</div></div>) : <div className="empty-state"><div><b>No credit packs are active.</b><p>Credit packs appear only after Stripe Product + Price synchronization and explicit activation.</p></div></div>}
     </section>
 
     <section className="workspace-card"><header><h2>Billing terms</h2><span>Policy version 2026-08-15</span></header>
       <div className="project-row"><div><b>Subscriptions</b><small>Automatic monthly renewal until cancelled online. Cancellation stops the next renewal and normally leaves the current paid period active. No prorated refund for unused time except where mandatory law requires otherwise.</small></div></div>
       <div className="project-row"><div><b>Credit packs</b><small>One-time service-usage credits. They are not money, stored value or cash-equivalent and are non-refundable except for mandatory rights, duplicate charges or verified billing errors.</small></div></div>
+      <div className="project-row"><div><b>Billing authority</b><small>Only organization owners and organization admins can start purchases, change plans or stop a subscription renewal.</small></div></div>
       <div className="project-row"><div><b>Policies</b><small><a href="/terms" target="_blank" rel="noopener noreferrer">Terms</a> · <a href="/refunds" target="_blank" rel="noopener noreferrer">Refund & Cancellation</a> · <a href="/acceptable-use" target="_blank" rel="noopener noreferrer">Acceptable Use</a> · <a href="/privacy" target="_blank" rel="noopener noreferrer">Privacy</a></small></div></div>
     </section>
 
