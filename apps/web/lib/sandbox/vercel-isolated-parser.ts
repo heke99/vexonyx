@@ -115,8 +115,10 @@ async function createSandbox(jobId: string, timeoutMs: number): Promise<SandboxS
 }
 
 async function stopSandbox(sessionId: string) {
-  try { await api(`/sessions/${encodeURIComponent(sessionId)}/stop`, { method: "POST" }); }
-  catch (error) { console.error("sandbox_stop_failed", { sessionId, error: error instanceof Error ? error.message : "unknown" }); }
+  await api(`/sessions/${encodeURIComponent(sessionId)}/stop`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+  });
 }
 
 async function uploadInputs(sessionId: string, input: Uint8Array) {

@@ -22,8 +22,9 @@ async function maybeRunSandboxCanary(admin: AdminClient) {
     .maybeSingle();
   const latestAt = latest.data?.created_at ? new Date(latest.data.created_at).getTime() : 0;
   const latestMeta = latest.data?.metadata && typeof latest.data.metadata === "object" ? latest.data.metadata as Record<string, unknown> : {};
-  const previousPassed = latestMeta.status === "passed";
-  const minimumIntervalMs = previousPassed ? 24 * 60 * 60 * 1000 : 15 * 60 * 1000;
+  const previousPassed = latestMeta.status === "passed" && latestMeta.teardownVerified === true;
+  const previousPassNeedsTeardownVerification = latestMeta.status === "passed" && latestMeta.teardownVerified !== true;
+  const minimumIntervalMs = previousPassed ? 24 * 60 * 60 * 1000 : previousPassNeedsTeardownVerification ? 0 : 15 * 60 * 1000;
   if (latestAt && Date.now() - latestAt < minimumIntervalMs) return { status: "skipped_recent", previous: latestMeta.status || "unknown" };
 
   const canaryId = `canary-${randomUUID()}`;
@@ -43,6 +44,7 @@ async function maybeRunSandboxCanary(admin: AdminClient) {
       markerFound: passed,
       parserStatus: execution.result.status,
       sandbox: execution.sandbox,
+      teardownVerified: true,
       checkedAt: new Date().toISOString(),
     };
     await admin.schema("audit").from("audit_logs").insert({
@@ -56,7 +58,7 @@ async function maybeRunSandboxCanary(admin: AdminClient) {
     return metadata;
   } catch (error) {
     const reason = error instanceof Error ? error.message.slice(0, 300) : "sandbox_canary_failed";
-    const metadata = { status: "failed", reason, checkedAt: new Date().toISOString() };
+    const metadata = { status: "failed", reason, teardownVerified: false, checkedAt: new Date().toISOString() };
     await admin.schema("audit").from("audit_logs").insert({
       actor_type: "system",
       action: "runtime.isolated_parser_canary",
@@ -123,6 +125,7 @@ export async function POST(request: Request) {
       const metadata = {
         ...(parserResult.metadata || {}),
         sandbox: execution.sandbox,
+        teardownVerified: true,
         boundedOutputBytes: Buffer.byteLength(JSON.stringify(parserResult)),
       };
       const completed = await admin.schema("artifacts").rpc("complete_parser_job", {
@@ -135,7 +138,7 @@ export async function POST(request: Request) {
         p_chunks: chunks,
       });
       if (completed.error) throw completed.error;
-      results.push({ jobId, fileId, status: completed.data, sandboxRuntime: execution.sandbox.runtime, parserSourceSha256: execution.sandbox.parserSourceSha256 });
+      results.push({ jobId, fileId, status: completed.data, sandboxRuntime: execution.sandbox.runtime, parserSourceSha256: execution.sandbox.parserSourceSha256, teardownVerified: true });
     } catch (error) {
       const reason = error instanceof Error ? error.message.slice(0, 180) : "isolated_parser_failed";
       const failed = await admin.schema("artifacts").rpc("complete_parser_job", {
@@ -144,10 +147,10 @@ export async function POST(request: Request) {
         p_lease_generation: leaseGeneration,
         p_outcome: "failed",
         p_error_code: reason,
-        p_output_metadata: { failure: reason },
+        p_output_metadata: { failure: reason, teardownVerified: false },
         p_chunks: [],
       });
-      results.push({ jobId, fileId, status: failed.error ? "lease_lost" : failed.data, reason });
+      results.push({ jobId, fileId, status: failed.error ? "lease_lost" : failed.data, reason, teardownVerified: false });
     }
   }
 
