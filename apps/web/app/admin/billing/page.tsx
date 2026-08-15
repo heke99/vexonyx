@@ -8,8 +8,8 @@ import {
   savePlan,
   savePlanEntitlement,
   savePlanPrice,
-  setPlanPriceActive,
 } from "../commerce-actions";
+import { setPlanPriceActiveSafe } from "../commerce-provider-actions";
 
 function money(minor: unknown, currency: unknown) {
   return new Intl.NumberFormat("en", { style: "currency", currency: String(currency || "USD") }).format(Number(minor || 0) / 100);
@@ -105,7 +105,7 @@ export default async function AdminBillingPage() {
           <td><b>{plan.name}</b><small>{plan.code} · {subscriberCount} subscriber{subscriberCount === 1 ? "" : "s"}</small>{plan.description ? <small>{plan.description}</small> : null}</td>
           <td><b>{statusLabel(plan.status)}</b><small>{plan.is_public ? "Published to customers" : "Private"}</small></td>
           <td><b>{statusLabel(plan.provider_sync_status)}</b><small>{shortProviderId(plan.provider_product_id)}</small>{plan.provider_sync_error ? <small>Last error: {plan.provider_sync_error}</small> : null}</td>
-          <td>{planPrices.length ? planPrices.map((price) => <div key={price.id} style={{marginBottom:10}}><b>{money(price.unit_amount_minor, price.currency)} / {price.billing_interval}</b><small>{price.active ? "Checkout ready" : "Not for checkout"} · Stripe {statusLabel(price.provider_sync_status)}</small><small>{shortProviderId(price.provider_price_id)}</small>{price.provider_sync_error ? <small>Last error: {price.provider_sync_error}</small> : null}<div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:6}}>{price.provider_sync_status !== "synced" ? <form action={retryPlanPriceProviderSync}><input type="hidden" name="price_id" value={price.id}/><button className="admin-button" type="submit">Retry price sync</button></form> : <form action={setPlanPriceActive}><input type="hidden" name="price_id" value={price.id}/><input type="hidden" name="active" value={price.active ? "false" : "true"}/><button className="admin-button" type="submit">{price.active ? "Deactivate" : "Activate"}</button></form>}</div></div>) : <small>No prices yet</small>}</td>
+          <td>{planPrices.length ? planPrices.map((price) => <div key={price.id} style={{marginBottom:10}}><b>{money(price.unit_amount_minor, price.currency)} / {price.billing_interval}</b><small>{price.active ? "Checkout ready" : "Not for checkout"} · Stripe {statusLabel(price.provider_sync_status)}</small><small>{shortProviderId(price.provider_price_id)}</small>{price.provider_sync_error ? <small>Last error: {price.provider_sync_error}</small> : null}<div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:6}}>{price.provider_sync_status !== "synced" ? <form action={retryPlanPriceProviderSync}><input type="hidden" name="price_id" value={price.id}/><button className="admin-button" type="submit">Retry price sync</button></form> : <form action={setPlanPriceActiveSafe}><input type="hidden" name="price_id" value={price.id}/><input type="hidden" name="active" value={price.active ? "false" : "true"}/><button className="admin-button" type="submit">{price.active ? "Deactivate" : "Activate"}</button></form>}</div></div>) : <small>No prices yet</small>}</td>
           <td>{planEntitlements.length ? planEntitlements.map((item) => <small key={item.entitlement_key}>{item.entitlement_key}: {JSON.stringify(item.entitlement_value)}</small>) : <small>No entitlements configured</small>}</td>
           <td><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
             {plan.provider_sync_status !== "synced" || !plan.provider_product_id ? <form action={retryPlanProviderSync}><input type="hidden" name="plan_id" value={plan.id}/><button className="admin-button" type="submit">Retry Stripe sync</button></form> : null}
@@ -117,7 +117,6 @@ export default async function AdminBillingPage() {
     </tbody></table></div></section>
 
     <section className="admin-card"><div className="admin-card-header"><h2>Subscriptions</h2><span>{subs.data?.length ?? 0}</span></div><div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Organization</th><th>Plan</th><th>Status</th><th>Period end</th><th>Stripe subscription</th></tr></thead><tbody>{(subs.data ?? []).map((sub) => <tr key={sub.id}><td>{sub.organization_id}</td><td>{planRows.find((plan) => plan.id === sub.plan_id)?.name || "—"}</td><td>{sub.status}</td><td>{sub.current_period_end ? new Date(sub.current_period_end).toLocaleString("en-GB") : "—"}</td><td><small>{shortProviderId(sub.provider_subscription_id)}</small></td></tr>)}</tbody></table></div></section>
-
     <section className="admin-card"><div className="admin-card-header"><h2>Recent transactions</h2><span>{transactions.data?.length ?? 0}</span></div><div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Organization</th><th>Type</th><th>Status</th><th>Amount</th><th>Credits</th><th>Time</th></tr></thead><tbody>{(transactions.data ?? []).map((tx) => <tr key={tx.id}><td>{tx.organization_id}</td><td>{tx.kind}</td><td>{tx.status}</td><td>{money(tx.amount_minor, tx.currency)}</td><td>{Number(tx.credits).toLocaleString()}</td><td>{new Date(tx.created_at).toLocaleString("en-GB")}</td></tr>)}</tbody></table></div></section>
   </div>;
 }
