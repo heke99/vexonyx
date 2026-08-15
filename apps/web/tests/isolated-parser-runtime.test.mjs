@@ -73,7 +73,7 @@ test("production parser worker runs a low-frequency synthetic Sandbox canary whe
 test("Vercel crons are removed because production scheduling is Vault-backed in Supabase", () => {
   const config = JSON.parse(read("../../../vercel.json"));
   assert.ok(!config.crons || config.crons.length === 0);
-  const migration = read("../../../supabase/migrations/20260815014500_supabase_worker_scheduler.sql");
+  const migration = read("../../../supabase/migrations/20260815014947_supabase_worker_scheduler.sql");
   assert.match(migration, /create extension if not exists pg_net/);
   assert.match(migration, /create extension if not exists pg_cron/);
   assert.match(migration, /vault\.create_secret/);
