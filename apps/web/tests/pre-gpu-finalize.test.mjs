@@ -30,6 +30,31 @@ test("credit values are versioned and customer-visible from one catalog", () => 
   assert.match(adminPage, /Usage-rate history/);
   assert.match(customerPage, /How credits are used/);
   assert.match(customerPage, /plan_entitlements/);
+  assert.match(customerPage, /credits \/ month/);
+});
+
+test("each user gets a self-scoped monthly usage view", () => {
+  const usagePage = read("../app/app/usage/page.tsx");
+  const migration = read("../../../supabase/migrations/20260815142905_user_usage_monthly.sql");
+  assert.match(usagePage, /usage_user_monthly/);
+  assert.match(usagePage, /\.eq\("user_id", ws\.userId\)/);
+  assert.match(usagePage, /Credits used this month/);
+  assert.match(usagePage, /entry_type", "usage"/);
+  assert.match(migration, /usage\.usage_user_monthly/);
+  assert.match(migration, /user_id = auth\.uid\(\)/);
+  assert.match(migration, /operations\.is_org_member\(organization_id\)/);
+  assert.match(migration, /aggregate_user_usage_event/);
+  assert.match(migration, /set search_path = ''/i);
+});
+
+test("credit pack webhooks resolve authoritative credits from the server catalog", () => {
+  const webhook = read("../app/api/v1/billing/webhook/route.ts");
+  assert.match(webhook, /credit_products/);
+  assert.match(webhook, /metadata\.catalog_id/);
+  assert.match(webhook, /credit_product_amount_mismatch/);
+  assert.match(webhook, /credit_product_currency_mismatch/);
+  assert.match(webhook, /p_amount:purchasedCredits/);
+  assert.doesNotMatch(webhook, /const credits=Number\(metadata\.credits/);
 });
 
 test("marketing exports use dedicated leased retries, private storage and a self-cleaning canary", () => {
