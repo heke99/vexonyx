@@ -13,6 +13,8 @@ const ADMIN_CHALLENGE_COOKIE = "vx_admin_challenge";
 const CHALLENGE_TTL_SECONDS = 10 * 60;
 const MAX_OTP_ATTEMPTS = 5;
 const MAX_PASSWORD_FAILURES = 5;
+const MAX_PASSWORD_RESET_REQUESTS = 3;
+const AUTH_RATE_LIMIT_WINDOW_SECONDS = 15 * 60;
 
 type AdminClient = NonNullable<ReturnType<typeof createAdminClient>>;
 type ChallengePurpose = "login" | "password_reset";
@@ -52,6 +54,25 @@ async function authAudit(admin: AdminClient, action: string, metadata: Record<st
   });
 }
 
+async function consumeAdminRateLimit(admin: AdminClient, scope: "password_login" | "password_reset", subjectHash: string, maxAttempts: number) {
+  const { data, error } = await admin.schema("security").rpc("consume_admin_auth_rate_limit", {
+    p_scope: scope,
+    p_subject_hash: subjectHash,
+    p_max_attempts: maxAttempts,
+    p_window_seconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
+  });
+  if (error) throw error;
+  return data === true;
+}
+
+async function clearAdminRateLimit(admin: AdminClient, scope: "password_login" | "password_reset", subjectHash: string) {
+  const { error } = await admin.schema("security").rpc("clear_admin_auth_rate_limit", {
+    p_scope: scope,
+    p_subject_hash: subjectHash,
+  });
+  if (error) throw error;
+}
+
 async function isAllowedSuperadminEmail(admin: AdminClient, email: string) {
   const { data, error } = await admin.rpc("vexonyx_is_superadmin_email", { p_email: email });
   return !error && data === true;
@@ -66,18 +87,6 @@ async function getSuperadminUserId(admin: AdminClient, email: string) {
 async function ensureSuperadminProfile(admin: AdminClient, userId: string) {
   const { data, error } = await admin.schema("app").from("profiles").select("is_superadmin").eq("id", userId).maybeSingle();
   return !error && data?.is_superadmin === true;
-}
-
-async function passwordFailureLimited(admin: AdminClient, emailHash: string) {
-  const cutoff = new Date(Date.now() - 15 * 60_000).toISOString();
-  const { count } = await admin
-    .schema("audit")
-    .from("audit_logs")
-    .select("id", { count: "exact", head: true })
-    .eq("action", "admin.password_login_failed")
-    .contains("metadata", { email_hash: emailHash })
-    .gte("created_at", cutoff);
-  return (count ?? 0) >= MAX_PASSWORD_FAILURES;
 }
 
 async function createChallenge(admin: AdminClient, input: { purpose: ChallengePurpose; userId: string; email: string }) {
@@ -183,9 +192,10 @@ export async function startAdminPasswordLogin(formData: FormData) {
   const admin = createAdminClient();
   if (!admin) redirect("/admin-login?error=configuration");
 
+  const rateAllowed = await consumeAdminRateLimit(admin, "password_login", emailHash, MAX_PASSWORD_FAILURES);
   const allowed = await isAllowedSuperadminEmail(admin, email);
-  if (!allowed || !email || !password || await passwordFailureLimited(admin, emailHash)) {
-    await authAudit(admin, "admin.password_login_failed", { email_hash: emailHash, reason: allowed ? "invalid_or_limited" : "unauthorized_identity" });
+  if (!allowed || !email || !password || !rateAllowed) {
+    await authAudit(admin, "admin.password_login_failed", { email_hash: emailHash, reason: rateAllowed ? "invalid_credentials" : "rate_limited" });
     redirect("/admin-login?error=invalid_credentials");
   }
 
@@ -198,6 +208,7 @@ export async function startAdminPasswordLogin(formData: FormData) {
     redirect("/admin-login?error=invalid_credentials");
   }
 
+  await clearAdminRateLimit(admin, "password_login", emailHash);
   const sent = await generateAndSendCode(admin, { email, purpose: "login", userId: data.user.id });
   await authAudit(admin, sent ? "admin.email_code_sent" : "admin.email_code_failed", { user_id: data.user.id, purpose: "login" });
   if (!sent) redirect("/admin-login?error=delivery");
@@ -240,25 +251,17 @@ export async function verifyAdminLoginCode(formData: FormData) {
 
 export async function startAdminPasswordReset(formData: FormData) {
   const email = normalizeEmail(formData);
+  const emailHash = sha256(email);
   const admin = createAdminClient();
   if (!admin) redirect("/admin-login?error=configuration");
 
-  if (!email || !await isAllowedSuperadminEmail(admin, email)) {
+  const rateAllowed = await consumeAdminRateLimit(admin, "password_reset", emailHash, MAX_PASSWORD_RESET_REQUESTS);
+  if (!email || !rateAllowed || !await isAllowedSuperadminEmail(admin, email)) {
     redirect("/admin-login?reset_sent=1");
   }
 
   const userId = await getSuperadminUserId(admin, email);
   if (!userId || !await ensureSuperadminProfile(admin, userId)) redirect("/admin-login?reset_sent=1");
-
-  const cutoff = new Date(Date.now() - 15 * 60_000).toISOString();
-  const { count } = await admin
-    .schema("security")
-    .from("admin_auth_challenges")
-    .select("id", { count: "exact", head: true })
-    .eq("purpose", "password_reset")
-    .eq("user_id", userId)
-    .gte("created_at", cutoff);
-  if ((count ?? 0) >= 3) redirect("/admin-login?reset_sent=1");
 
   const sent = await generateAndSendCode(admin, { email, purpose: "password_reset", userId });
   await authAudit(admin, sent ? "admin.password_reset_code_sent" : "admin.password_reset_code_failed", { user_id: userId });
@@ -303,6 +306,7 @@ export async function completeAdminPasswordReset(formData: FormData) {
     redirect("/admin-login?step=reset_verify&error=password_update");
   }
 
+  await clearAdminRateLimit(admin, "password_reset", challenge.email_hash);
   await revokeAllVerifiedAdminSessions(admin, challenge.user_id);
   await consumeChallenge(admin, challenge.id);
   await authAudit(admin, "admin.password_reset_completed", { user_id: challenge.user_id, sessions_revoked: true });
