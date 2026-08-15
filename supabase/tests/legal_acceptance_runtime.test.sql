@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(8);
+select plan(11);
 
 select ok(
   to_regclass('billing.legal_acceptances') is not null,
@@ -33,12 +33,13 @@ select ok(
 );
 
 insert into billing.legal_acceptances(
-  organization_id,user_id,checkout_kind,catalog_id,
+  id,organization_id,user_id,checkout_kind,catalog_id,
   terms_version,refund_policy_version,acceptable_use_version,
   terms_accepted,refund_policy_accepted,acceptable_use_accepted,
   immediate_performance_requested,professional_use_acknowledged,
   auto_renewal_acknowledged,policy_snapshot
 ) values (
+  'dddddddd-dddd-4ddd-8ddd-dddddddddddd'::uuid,
   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'::uuid,
   'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'::uuid,
   'subscription',
@@ -57,6 +58,25 @@ select is(
   (select count(*) from billing.legal_acceptances where terms_accepted and refund_policy_accepted and acceptable_use_accepted),
   1::bigint,
   'acceptance acknowledgement fields persist together'
+);
+
+select lives_ok(
+  $$update billing.legal_acceptances set provider_checkout_session_id='cs_test_legal_acceptance' where id='dddddddd-dddd-4ddd-8ddd-dddddddddddd'::uuid$$,
+  'provider checkout session can be bound once after acceptance'
+);
+
+select throws_ok(
+  $$update billing.legal_acceptances set terms_version='2099-01-01' where id='dddddddd-dddd-4ddd-8ddd-dddddddddddd'::uuid$$,
+  'P0001',
+  'legal_acceptance_immutable',
+  'accepted policy evidence cannot be rewritten after insert'
+);
+
+select throws_ok(
+  $$update billing.legal_acceptances set provider_checkout_session_id='cs_test_rebind_forbidden' where id='dddddddd-dddd-4ddd-8ddd-dddddddddddd'::uuid$$,
+  'P0001',
+  'legal_acceptance_session_immutable',
+  'provider checkout session cannot be rebound after first binding'
 );
 
 select * from finish();
