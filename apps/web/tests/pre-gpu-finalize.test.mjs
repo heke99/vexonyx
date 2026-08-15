@@ -61,10 +61,11 @@ test("billing webhooks use authoritative catalog data and tolerate Stripe event 
   assert.match(webhook, /metadata\.catalog_id/);
   assert.match(webhook, /credit_product_amount_mismatch/);
   assert.match(webhook, /credit_product_currency_mismatch/);
-  assert.match(webhook, /p_amount:purchasedCredits/);
+  assert.match(webhook, /p_amount:\s*purchasedCredits/);
   assert.doesNotMatch(webhook, /const credits=Number\(metadata\.credits/);
   assert.match(webhook, /loadStripeSubscriptionPlan/);
-  assert.match(webhook, /if\(!planId&&providerSubscriptionId\)/);
+  assert.match(webhook, /resolvePaidInvoicePlan/);
+  assert.match(webhook, /invoiceSubscriptionId/);
   assert.match(webhook, /invoice-credit:/);
 });
 
@@ -96,9 +97,9 @@ test("tax-ready commerce records tax state without pretending collection is acti
 
   assert.match(webhook, /taxSnapshot/);
   assert.match(webhook, /syncBillingCustomer/);
-  assert.match(webhook, /subtotal_minor:tax\.subtotal/);
-  assert.match(webhook, /tax_minor:tax\.tax/);
-  assert.match(webhook, /total_minor:tax\.total/);
+  assert.match(webhook, /subtotal_minor:\s*tax\.subtotal/);
+  assert.match(webhook, /tax_minor:\s*tax\.tax/);
+  assert.match(webhook, /total_minor:\s*tax\.total/);
   assert.match(webhook, /automatic_tax_enabled/);
 
   assert.match(taxActions, /retrieveStripeTaxCode/);
