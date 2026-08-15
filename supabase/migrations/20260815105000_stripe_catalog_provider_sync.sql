@@ -70,6 +70,43 @@ create trigger trg_public_plan_checkout_readiness
 before insert or update of status,is_public,provider,provider_product_id,provider_sync_status on billing.plans
 for each row execute function billing.enforce_public_plan_checkout_readiness();
 
+create or replace function billing.enforce_public_plan_keeps_price()
+returns trigger
+language plpgsql
+security definer
+set search_path=''
+as $$
+declare
+  v_plan_id uuid := coalesce(new.plan_id,old.plan_id);
+  v_price_id uuid := coalesce(new.id,old.id);
+begin
+  if exists (select 1 from billing.plans p where p.id=v_plan_id and p.status='active' and p.is_public=true) then
+    if not exists (
+      select 1 from billing.plan_prices pp
+      where pp.plan_id=v_plan_id
+        and pp.id<>v_price_id
+        and pp.active=true
+        and pp.provider='stripe'
+        and pp.provider_price_id is not null
+        and pp.provider_sync_status='synced'
+        and pp.effective_from<=now()
+        and (pp.effective_to is null or pp.effective_to>now())
+    ) then
+      if tg_op='DELETE' or new.active<>true or new.provider<>'stripe' or new.provider_price_id is null or new.provider_sync_status<>'synced' then
+        raise exception 'public_plan_cannot_lose_last_checkout_ready_price' using errcode='23514';
+      end if;
+    end if;
+  end if;
+  return case when tg_op='DELETE' then old else new end;
+end
+$$;
+
+revoke all on function billing.enforce_public_plan_keeps_price() from public,anon,authenticated;
+drop trigger if exists trg_public_plan_keeps_price_update on billing.plan_prices;
+create trigger trg_public_plan_keeps_price_update
+before update of active,provider,provider_price_id,provider_sync_status,effective_to or delete on billing.plan_prices
+for each row execute function billing.enforce_public_plan_keeps_price();
+
 drop policy if exists plans_authenticated_select on billing.plans;
 create policy plans_authenticated_select on billing.plans for select to authenticated
 using (status='active' and is_public=true and provider='stripe' and provider_product_id is not null and provider_sync_status='synced');
