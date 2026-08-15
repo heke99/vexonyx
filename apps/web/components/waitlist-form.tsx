@@ -101,7 +101,7 @@ export function WaitlistForm({ compact = false, referralCode }: { compact?: bool
       {referralCode ? <input type="hidden" name="ref" value={referralCode} /> : null}
       <button className="button" disabled={state.kind === "loading"} type="submit">{state.kind === "loading" ? "Joining…" : "Join the waitlist"}</button>
       {state.kind === "error" ? <p className="form-error" role="alert">{state.message}</p> : null}
-      <p className="form-note">Individuals and companies are both welcome. Verify your email to activate your place and referral link.</p>
+      <p className="form-note">Individuals and companies are both welcome. Verify your email to activate your place and referral link. We process the information you submit to manage and secure the waitlist as described in our <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "underline" }}>Privacy Notice</a>.</p>
     </form>
   );
 }

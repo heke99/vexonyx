@@ -24,6 +24,7 @@ export function AppSidebar() {
       <Link href="/app/integrations">Connectors & plugins</Link>
       <Link href="/app/team">Team</Link>
       <Link href="/app/settings">Settings & security</Link>
+      <Link href="/legal">Legal & policies</Link>
     </nav>
   </aside>;
 }
