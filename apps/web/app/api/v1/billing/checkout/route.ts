@@ -113,7 +113,6 @@ export async function POST(request: Request) {
   params.set("success_url", `${origin()}/app/billing?checkout=success`);
   params.set("cancel_url", `${origin()}/app/billing?checkout=cancelled`);
   params.set("client_reference_id", ws.organizationId);
-  params.set("integration_identifier", "vexonyx_tax_kqmvzjht");
   params.set("tax_id_collection[enabled]", "true");
   params.set("customer_update[address]", "auto");
   params.set("customer_update[name]", "auto");
