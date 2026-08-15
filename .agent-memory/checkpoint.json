@@ -1,28 +1,32 @@
 {
   "project": "VEXONYX",
   "date": "2026-08-15",
-  "branch": "agent/commerce-catalog-user-usage-20260815",
-  "phase": "v1-commerce-personal-usage",
-  "status": "IN_PROGRESS",
-  "supabaseMigrationHead": "20260815171231",
-  "pr": 28,
+  "branch": "agent/tax-ready-commerce-20260815",
+  "phase": "tax-ready-commerce",
+  "status": "IMPLEMENTED_PENDING_FINAL_CI_MERGE_DEPLOY_VERIFY",
+  "supabaseMigrationHead": "20260815183221",
+  "pr": 29,
   "verified": [
-    "live Stripe V1 catalog created",
-    "live Supabase catalog provider-synced",
-    "per-user resource usage aggregation applied with self-only RLS",
-    "per-user credit consumption aggregation applied with self-only RLS",
-    "functional app CI passed",
-    "functional clean migration replay/db lint/pgTAP passed"
+    "Stripe Tax head office synchronized to verified Sheridan Wyoming address",
+    "Stripe Tax default behavior is exclusive",
+    "Stripe active tax registration count is zero and collection remains disabled",
+    "VEXONYX catalog tax candidates recorded without silently confirming legal classification",
+    "tax-ready billing schema and immutable transaction tax snapshots applied in production",
+    "Checkout collection gate rechecks live Stripe registrations and confirmed product classification",
+    "Superadmin tax readiness controls are fail-closed and never create registrations",
+    "personal usage RLS auth init-plan performance warnings remediated"
   ],
   "next": [
-    "run final CI on exact production-aligned migration set",
-    "merge PR #28 if green",
-    "verify production Vercel deployment and /ready",
-    "verify live Stripe/Supabase catalog consistency"
+    "pass final PR 29 app CI and clean migration replay/db lint/pgTAP",
+    "merge PR 29 only if green",
+    "verify Vercel production deployment and sanitized readiness",
+    "verify Stripe and Supabase tax state remains collection-off"
   ],
   "externalGates": [
-    "Vercel Stripe runtime secrets/webhook configuration must be verified before claiming checkout live",
-    "Stripe Tax collection must wait for verified registrations and product tax treatment",
-    "GPU deployments remain disabled until GPU rollout and benchmark gate"
+    "Vercel STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET remain required before live checkout",
+    "no Stripe webhook endpoint should be created until its signing secret can be stored immediately",
+    "tax registrations require actual authority registration and must not be automated",
+    "subscription tax code candidate txcd_10105002 and prepaid credit treatment require human/legal confirmation",
+    "GPU deployments remain disabled until the separate 4x H200 rollout gates pass"
   ]
 }

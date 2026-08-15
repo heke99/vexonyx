@@ -1,16 +1,20 @@
 # Current task
 
-Finalize the VEXONYX V1 commerce and personal-usage launch layer.
+Finalize VEXONYX tax-ready Commerce in PR #29 on branch `agent/tax-ready-commerce-20260815`.
 
-Current work is PR #28 on branch `agent/commerce-catalog-user-usage-20260815`:
+Implemented operationally and in code/database:
 
-- the approved live Stripe subscription and credit-pack catalog has been created operationally;
-- the matching Supabase billing catalog is active, public and provider-synced;
-- per-user monthly usage aggregation with self-only RLS is applied in production and versioned as migration `20260815142905_user_usage_monthly`;
-- customer Billing shows monthly included credits;
-- credit-pack webhook grants are validated against the authoritative server-side catalog;
-- app CI and clean migration replay passed on the functional change set.
+- Stripe Tax head office is the verified Diversa Solutions LLC address in Sheridan, Wyoming;
+- Stripe Tax default price behavior is exclusive;
+- Stripe currently has zero active tax registrations, so collection remains intentionally off;
+- subscriptions use `txcd_10105002` only as the verified Stripe AIaaS business-use candidate and remain `pending_confirmation` until human/legal confirmation;
+- prepaid credit packs remain `prepaid_usage_review` until their tax point/classification is explicitly confirmed;
+- production Supabase is migration-synced through `20260815183221_usage_rls_initplan_optimization`;
+- Checkout collects tax IDs plus customer name/address, but only enables `automatic_tax` when local collection is enabled, the catalog item has a confirmed tax code, and Stripe still reports at least one active registration;
+- billing webhooks persist subtotal, tax, total, jurisdiction and customer tax identity from Stripe;
+- Superadmin `/admin/tax` exposes provider refresh, classification confirmation and a fail-closed tax-collection gate;
+- no code path automatically creates Stripe Tax registrations.
 
-Exact next action: run final CI after this memory checkpoint, merge PR #28 only if green, verify the production Vercel deployment and `/ready`, and confirm the live Stripe/Supabase catalog remains consistent.
+Exact next action: pass final PR #29 app CI and clean Supabase migration replay/db lint/pgTAP, merge only if green, then verify the production Vercel deployment and `/ready`.
 
-Do not enable GPU inference, external tool execution, automatic Stripe Tax collection, or tax registrations as part of this task. GPU/model execution remains fail-closed until the separate GPU rollout and benchmarks are performed. Stripe Tax collection must follow verified tax registrations and product tax classification.
+External launch gates remain: Vercel production still needs the Stripe secret and webhook signing secret before checkout can be considered live. Do not create a Stripe webhook endpoint unless its signing secret can be stored in Vercel immediately. Do not create tax registrations or confirm tax classifications without the required human/legal decision. GPU/model/tool execution remains fail-closed until the separate 4× H200 rollout gates pass.
