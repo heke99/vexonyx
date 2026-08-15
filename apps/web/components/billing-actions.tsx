@@ -54,7 +54,9 @@ export function CheckoutButton({ kind, id, children }: { kind: "subscription" | 
         ? "Payments are not enabled yet."
         : message === "legal_acceptance_required"
           ? "Purchase terms must be accepted before checkout."
-          : "Checkout is temporarily unavailable.");
+          : message === "billing_admin_required"
+            ? "Only an organization owner or admin can make purchases."
+            : "Checkout is temporarily unavailable.");
       setBusy(false);
     }
   }
@@ -64,7 +66,7 @@ export function CheckoutButton({ kind, id, children }: { kind: "subscription" | 
       <label style={{ display: "flex", alignItems: "flex-start", gap: 9, fontSize: 10, lineHeight: 1.55, color: "#a8aeb7" }}>
         <input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} style={{ marginTop: 2 }} />
         <span>
-          I agree to the <LegalLinks />. I request immediate access after successful payment and confirm this purchase is for professional, business, research or authorized cybersecurity use.
+          I agree to the <LegalLinks />. I request immediate access after successful payment and confirm this purchase is for professional, business, research or authorized cybersecurity use and not for personal or household consumer use.
           {kind === "subscription" ? " I understand the plan renews automatically each month at the displayed price plus applicable tax until future renewal is cancelled." : " I understand purchased credits are non-refundable and have no cash redemption value, except where mandatory law requires otherwise."}
         </span>
       </label>
