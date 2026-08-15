@@ -1,10 +1,50 @@
+import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getWorkspace } from "@/lib/workspace";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { listActiveStripeTaxRegistrations, stripeConfigured, stripeRequest } from "@/lib/billing/stripe";
 
+const POLICY_VERSION = "2026-08-15";
+
+type LegalAcceptanceInput = {
+  terms?: boolean;
+  refund_policy?: boolean;
+  acceptable_use?: boolean;
+  immediate_performance?: boolean;
+  professional_use?: boolean;
+  auto_renewal?: boolean;
+};
+
 function origin() {
   return process.env.NEXT_PUBLIC_APP_URL || "https://vexonyx.com";
+}
+
+function legalAcceptanceValid(kind: "subscription" | "credit_pack", legal: LegalAcceptanceInput | undefined) {
+  if (!legal?.terms || !legal.refund_policy || !legal.acceptable_use || !legal.immediate_performance || !legal.professional_use) return false;
+  if (kind === "subscription" && !legal.auto_renewal) return false;
+  return true;
+}
+
+function policySnapshot(kind: "subscription" | "credit_pack") {
+  return {
+    version: POLICY_VERSION,
+    paths: {
+      terms: "/terms",
+      refund_policy: "/refunds",
+      acceptable_use: "/acceptable-use",
+      privacy_notice: "/privacy",
+    },
+    acknowledgements: {
+      terms: "I agree to the VEXONYX Terms of Service.",
+      refund_policy: "I agree to the VEXONYX Refund & Cancellation Policy, including the no-refund rule subject to mandatory legal rights.",
+      acceptable_use: "I agree to use VEXONYX only for authorized cybersecurity activity under the Acceptable Use Policy.",
+      immediate_performance: "I request immediate access to the digital service after successful payment.",
+      professional_use: "I am purchasing VEXONYX for professional, business, research or authorized cybersecurity use and not for personal or household consumer use.",
+      auto_renewal: kind === "subscription"
+        ? "I understand this subscription renews automatically each month at the displayed price plus applicable tax until I cancel future renewal."
+        : null,
+    },
+  };
 }
 
 export async function POST(request: Request) {
@@ -14,9 +54,15 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
   if (!admin) return NextResponse.json({ error: "billing_unavailable" }, { status: 503 });
 
-  const body = await request.json().catch(() => null) as { kind?: string; price_id?: string; credit_product_id?: string } | null;
+  const body = await request.json().catch(() => null) as {
+    kind?: string;
+    price_id?: string;
+    credit_product_id?: string;
+    legal?: LegalAcceptanceInput;
+  } | null;
   const kind = body?.kind;
   if (kind !== "subscription" && kind !== "credit_pack") return NextResponse.json({ error: "invalid_checkout_kind" }, { status: 400 });
+  if (!legalAcceptanceValid(kind, body?.legal)) return NextResponse.json({ error: "legal_acceptance_required" }, { status: 400 });
 
   const { data: claims } = await ws.supabase.auth.getClaims();
   const email = typeof claims?.claims?.email === "string" ? claims.claims.email : null;
@@ -59,7 +105,7 @@ export async function POST(request: Request) {
     taxCode = product.tax_code || null;
     taxClassificationStatus = product.tax_classification_status || null;
   }
-  if (!providerPriceId) return NextResponse.json({ error: "price_not_available" }, { status: 409 });
+  if (!providerPriceId || !catalogId) return NextResponse.json({ error: "price_not_available" }, { status: 409 });
 
   const { data: taxSettings, error: taxSettingsError } = await admin.schema("billing").from("tax_settings")
     .select("automatic_collection_enabled,active_registration_count")
@@ -105,6 +151,32 @@ export async function POST(request: Request) {
     customer = inserted.data;
   }
 
+  const acceptanceId = randomUUID();
+  const acceptedAt = new Date().toISOString();
+  const snapshot = policySnapshot(kind);
+  const userAgent = (request.headers.get("user-agent") || "").slice(0, 1000) || null;
+  const acceptance = await admin.schema("billing").from("legal_acceptances").insert({
+    id: acceptanceId,
+    organization_id: ws.organizationId,
+    user_id: ws.userId,
+    checkout_kind: kind,
+    catalog_id: catalogId,
+    terms_version: POLICY_VERSION,
+    refund_policy_version: POLICY_VERSION,
+    acceptable_use_version: POLICY_VERSION,
+    terms_accepted: true,
+    refund_policy_accepted: true,
+    acceptable_use_accepted: true,
+    immediate_performance_requested: true,
+    professional_use_acknowledged: true,
+    auto_renewal_acknowledged: kind === "subscription",
+    policy_snapshot: snapshot,
+    user_agent: userAgent,
+    accepted_at: acceptedAt,
+    metadata: { source: "vexonyx_checkout" },
+  });
+  if (acceptance.error) return NextResponse.json({ error: "legal_acceptance_store_failed" }, { status: 500 });
+
   const params = new URLSearchParams();
   params.set("customer", customer.provider_customer_id);
   params.set("mode", kind === "subscription" ? "subscription" : "payment");
@@ -120,20 +192,27 @@ export async function POST(request: Request) {
   params.set("metadata[organization_id]", ws.organizationId);
   params.set("metadata[user_id]", ws.userId);
   params.set("metadata[kind]", kind);
-  params.set("metadata[catalog_id]", catalogId || "");
+  params.set("metadata[catalog_id]", catalogId);
   params.set("metadata[automatic_tax_enabled]", String(automaticTaxEnabled));
   params.set("metadata[tax_code]", taxCode || "");
+  params.set("metadata[legal_acceptance_id]", acceptanceId);
+  params.set("metadata[policy_version]", POLICY_VERSION);
   if (kind === "credit_pack") params.set("metadata[credits]", String(credits));
   if (kind === "subscription") {
     params.set("subscription_data[metadata][organization_id]", ws.organizationId);
     params.set("subscription_data[metadata][automatic_tax_enabled]", String(automaticTaxEnabled));
     params.set("subscription_data[metadata][tax_code]", taxCode || "");
+    params.set("subscription_data[metadata][legal_acceptance_id]", acceptanceId);
+    params.set("subscription_data[metadata][policy_version]", POLICY_VERSION);
   }
 
   try {
     const session = await stripeRequest("/checkout/sessions", params, `checkout:${ws.organizationId}:${kind}:${catalogId}:${Date.now()}`);
     const url = typeof session.url === "string" ? session.url : null;
-    if (!url) return NextResponse.json({ error: "checkout_session_failed" }, { status: 502 });
+    const sessionId = String(session.id || "");
+    if (!url || !/^cs_[A-Za-z0-9_]+$/.test(sessionId)) return NextResponse.json({ error: "checkout_session_failed" }, { status: 502 });
+    const bound = await admin.schema("billing").from("legal_acceptances").update({ provider_checkout_session_id: sessionId }).eq("id", acceptanceId);
+    if (bound.error) return NextResponse.json({ error: "legal_acceptance_bind_failed" }, { status: 500 });
     return NextResponse.json({ url });
   } catch {
     return NextResponse.json({ error: "checkout_failed" }, { status: 503 });
