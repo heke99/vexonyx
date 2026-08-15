@@ -58,6 +58,16 @@ test("bundled Python parser normalizes, compiles and emits bounded JSON", () => 
   }
 });
 
+test("production parser worker runs a low-frequency synthetic Sandbox canary when idle", () => {
+  const parserWorker = read("../app/api/internal/workers/isolated-parser/route.ts");
+  assert.match(parserWorker, /VERCEL_ENV !== "production"/);
+  assert.match(parserWorker, /VEXONYX_SANDBOX_CANARY/);
+  assert.match(parserWorker, /runtime\.isolated_parser_canary/);
+  assert.match(parserWorker, /previousPassed \? 24 \* 60 \* 60 \* 1000 : 15 \* 60 \* 1000/);
+  assert.match(parserWorker, /results\.length === 0 \? await maybeRunSandboxCanary/);
+  assert.match(parserWorker, /markerFound/);
+});
+
 test("cron schedule wires file, parser, report and export workers without public auth bypass", () => {
   const config = JSON.parse(read("../../../vercel.json"));
   const paths = new Set((config.crons || []).map((entry) => entry.path));
