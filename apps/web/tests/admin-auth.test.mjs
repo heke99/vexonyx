@@ -4,6 +4,7 @@ import fs from "node:fs";
 
 const read = (path) => fs.readFileSync(new URL(path, import.meta.url), "utf8");
 const authMigration = "../../../supabase/migrations/20260814210224_admin_password_email_otp.sql";
+const hardeningMigration = "../../../supabase/migrations/20260815110000_admin_rate_limit_and_index_cleanup.sql";
 
 test("Superadmin password login resolves identity from private database configuration", () => {
   const action = read("../app/admin-login/actions.ts");
@@ -97,4 +98,18 @@ test("Superadmin logout and password changes revoke the application step-up proo
   assert.match(action, /revokeCurrentVerifiedAdminSession/);
   assert.match(action, /revokeAllVerifiedAdminSessions/);
   assert.match(action, /scope:\s*"global"/);
+});
+
+test("Superadmin password and reset limits use an atomic service-role-only security bucket", () => {
+  const action = read("../app/admin-login/actions.ts");
+  const migration = read(hardeningMigration);
+  assert.match(action, /consume_admin_auth_rate_limit/);
+  assert.match(action, /clear_admin_auth_rate_limit/);
+  assert.match(action, /"password_login"/);
+  assert.match(action, /"password_reset"/);
+  assert.match(migration, /security\.admin_auth_rate_limits/);
+  assert.match(migration, /for update/i);
+  assert.match(migration, /set search_path = ''/i);
+  assert.match(migration, /revoke all on security\.admin_auth_rate_limits from public, anon, authenticated/i);
+  assert.match(migration, /grant execute on function security\.consume_admin_auth_rate_limit.*service_role/is);
 });
