@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getWorkspace } from "@/lib/workspace";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { stripeRequest } from "@/lib/billing/stripe";
+import { stripeConfigured, stripeRequest } from "@/lib/billing/stripe";
 
 function origin() {
   return process.env.NEXT_PUBLIC_APP_URL || "https://vexonyx.com";
@@ -10,6 +10,7 @@ function origin() {
 export async function POST(request: Request) {
   const ws = await getWorkspace();
   if (!ws?.organizationId || !ws.userId) return NextResponse.json({ error: "organization_required" }, { status: 401 });
+  if (!stripeConfigured()) return NextResponse.json({ error: "billing_not_enabled" }, { status: 503 });
   const admin = createAdminClient();
   if (!admin) return NextResponse.json({ error: "billing_unavailable" }, { status: 503 });
 
@@ -25,14 +26,27 @@ export async function POST(request: Request) {
   let catalogId: string | null = null;
   if (kind === "subscription") {
     if (!body?.price_id) return NextResponse.json({ error: "price_required" }, { status: 400 });
-    const { data: price } = await admin.schema("billing").from("plan_prices").select("id,provider_price_id,active,plan_id").eq("id", body.price_id).eq("active", true).maybeSingle();
+    const { data: price } = await admin.schema("billing").from("plan_prices")
+      .select("id,provider_price_id,provider_sync_status,active,plan_id,plans!inner(status,is_public,provider_sync_status,provider_product_id)")
+      .eq("id", body.price_id)
+      .eq("active", true)
+      .eq("provider_sync_status", "synced")
+      .eq("plans.status", "active")
+      .eq("plans.is_public", true)
+      .eq("plans.provider_sync_status", "synced")
+      .maybeSingle();
     if (!price?.provider_price_id) return NextResponse.json({ error: "price_not_available" }, { status: 409 });
     providerPriceId = price.provider_price_id;
     catalogId = price.plan_id;
   } else {
     if (!body?.credit_product_id) return NextResponse.json({ error: "credit_product_required" }, { status: 400 });
-    const { data: product } = await admin.schema("billing").from("credit_products").select("id,provider_price_id,active,credits").eq("id", body.credit_product_id).eq("active", true).maybeSingle();
-    if (!product?.provider_price_id) return NextResponse.json({ error: "credit_product_not_available" }, { status: 409 });
+    const { data: product } = await admin.schema("billing").from("credit_products")
+      .select("id,provider_product_id,provider_price_id,provider_sync_status,active,credits")
+      .eq("id", body.credit_product_id)
+      .eq("active", true)
+      .eq("provider_sync_status", "synced")
+      .maybeSingle();
+    if (!product?.provider_product_id || !product.provider_price_id) return NextResponse.json({ error: "credit_product_not_available" }, { status: 409 });
     providerPriceId = product.provider_price_id;
     catalogId = product.id;
     credits = Number(product.credits);
@@ -46,7 +60,7 @@ export async function POST(request: Request) {
     customerParams.set("metadata[organization_id]", ws.organizationId);
     const created = await stripeRequest("/customers", customerParams, `customer:${ws.organizationId}`);
     const customerId = String(created.id || "");
-    if (!customerId) return NextResponse.json({ error: "customer_creation_failed" }, { status: 502 });
+    if (!/^cus_[A-Za-z0-9]+$/.test(customerId)) return NextResponse.json({ error: "customer_creation_failed" }, { status: 502 });
     const inserted = await admin.schema("billing").from("billing_customers").upsert({ organization_id: ws.organizationId, provider: "stripe", provider_customer_id: customerId, billing_email: email }, { onConflict: "organization_id" }).select("provider_customer_id").single();
     if (inserted.error) return NextResponse.json({ error: "customer_state_failed" }, { status: 500 });
     customer = inserted.data;
@@ -72,7 +86,7 @@ export async function POST(request: Request) {
     const url = typeof session.url === "string" ? session.url : null;
     if (!url) return NextResponse.json({ error: "checkout_session_failed" }, { status: 502 });
     return NextResponse.json({ url });
-  } catch (error) {
-    return NextResponse.json({ error: error instanceof Error && error.message === "stripe_not_configured" ? "billing_not_enabled" : "checkout_failed" }, { status: 503 });
+  } catch {
+    return NextResponse.json({ error: "checkout_failed" }, { status: 503 });
   }
 }
