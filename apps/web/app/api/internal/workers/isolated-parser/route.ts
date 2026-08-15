@@ -70,9 +70,9 @@ async function maybeRunSandboxCanary(admin: AdminClient) {
 }
 
 export async function POST(request: Request) {
-  if (!isAuthorizedWorkerRequest(request)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const admin = createAdminClient();
   if (!admin) return NextResponse.json({ error: "worker_unavailable" }, { status: 503 });
+  if (!(await isAuthorizedWorkerRequest(request, admin))) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const workerId = `parser-${randomUUID()}`;
   const claim = await admin.schema("artifacts").rpc("claim_parser_jobs", { p_worker_id: workerId, p_limit: 2, p_lease_seconds: 480 });
