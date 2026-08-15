@@ -1,5 +1,10 @@
 import { requireSuperadmin } from "@/lib/admin/guard";
-import { retryCreditProductProviderSync, setCreditProductActive, adjustCredits, saveCreditProduct } from "../commerce-actions";
+import { adjustCredits } from "../commerce-actions";
+import {
+  createCreditProductProviderBacked,
+  retryCreditProductProviderSyncSafe,
+  setCreditProductActiveSafe,
+} from "../commerce-provider-actions";
 
 function money(minor: unknown, currency: unknown) {
   return new Intl.NumberFormat("en", { style: "currency", currency: String(currency || "USD") }).format(Number(minor || 0) / 100);
@@ -25,7 +30,7 @@ export default async function AdminCreditsPage() {
     <div className="admin-heading"><div className="admin-heading-copy"><div className="admin-eyebrow">VEXONYX / COMMERCE</div><h1>Credits</h1><p>Credit packs use the same provider-sync rules as subscriptions. VEXONYX owns the ledger and credit quantity; Stripe owns the one-time Product, Price and payment.</p></div></div>
 
     <section className="admin-grid equal">
-      <article className="admin-card"><div className="admin-card-header"><h2>Create credit pack</h2><span>Auto-sync Product + Price</span></div><form className="admin-card-body admin-form" action={saveCreditProduct}>
+      <article className="admin-card"><div className="admin-card-header"><h2>Create credit pack</h2><span>Auto-sync Product + Price</span></div><form className="admin-card-body admin-form" action={createCreditProductProviderBacked}>
         <input className="admin-input" name="code" placeholder="credits_10k" required/>
         <input className="admin-input" name="name" placeholder="10,000 credits" required/>
         <textarea className="admin-input" name="description" placeholder="Optional description"/>
@@ -65,7 +70,7 @@ export default async function AdminCreditsPage() {
       <td>{money(product.unit_amount_minor, product.currency)}</td>
       <td><b>{String(product.provider_sync_status).replaceAll("_", " ")}</b><small>Product: {shortId(product.provider_product_id)}</small><small>Price: {shortId(product.provider_price_id)}</small>{product.provider_sync_error ? <small>Last error: {product.provider_sync_error}</small> : null}</td>
       <td><b>{product.active ? "Active" : "Inactive"}</b><small>{product.active && product.provider_sync_status === "synced" ? "Customer checkout ready" : "Not offered to customers"}</small></td>
-      <td><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{product.provider_sync_status !== "synced" || !product.provider_product_id || !product.provider_price_id ? <form action={retryCreditProductProviderSync}><input type="hidden" name="product_id" value={product.id}/><button className="admin-button" type="submit">Retry Stripe sync</button></form> : <form action={setCreditProductActive}><input type="hidden" name="product_id" value={product.id}/><input type="hidden" name="active" value={product.active ? "false" : "true"}/><button className="admin-button" type="submit">{product.active ? "Deactivate" : "Activate"}</button></form>}</div></td>
+      <td><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{product.provider_sync_status !== "synced" || !product.provider_product_id || !product.provider_price_id ? <form action={retryCreditProductProviderSyncSafe}><input type="hidden" name="product_id" value={product.id}/><button className="admin-button" type="submit">Retry Stripe sync</button></form> : <form action={setCreditProductActiveSafe}><input type="hidden" name="product_id" value={product.id}/><input type="hidden" name="active" value={product.active ? "false" : "true"}/><button className="admin-button" type="submit">{product.active ? "Deactivate" : "Activate"}</button></form>}</div></td>
     </tr>)}</tbody></table></div></section>
 
     <section className="admin-card"><div className="admin-card-header"><h2>Organization balances</h2><span>{accounts.data?.length ?? 0}</span></div><div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Organization</th><th>Balance</th><th>Purchased</th><th>Granted</th><th>Consumed</th></tr></thead><tbody>{(accounts.data ?? []).map((account) => <tr key={account.organization_id}><td><b>{orgName.get(account.organization_id) || account.organization_id}</b><small>{account.organization_id}</small></td><td>{Number(account.balance).toLocaleString()}</td><td>{Number(account.lifetime_purchased).toLocaleString()}</td><td>{Number(account.lifetime_granted).toLocaleString()}</td><td>{Number(account.lifetime_consumed).toLocaleString()}</td></tr>)}</tbody></table></div></section>
