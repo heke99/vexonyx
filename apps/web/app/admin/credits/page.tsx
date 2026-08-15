@@ -1,5 +1,6 @@
 import { requireSuperadmin } from "@/lib/admin/guard";
 import { adjustCredits } from "../commerce-actions";
+import { publishCreditRate } from "../credit-rate-actions";
 import {
   createCreditProductProviderBacked,
   retryCreditProductProviderSyncSafe,
@@ -16,8 +17,9 @@ function shortId(value: unknown) {
 
 export default async function AdminCreditsPage() {
   const { admin } = await requireSuperadmin();
-  const [products, accounts, ledger, orgs] = await Promise.all([
+  const [products, rates, accounts, ledger, orgs] = await Promise.all([
     admin.schema("billing").from("credit_products").select("id,code,name,description,credits,currency,unit_amount_minor,provider,provider_product_id,provider_price_id,provider_sync_status,provider_sync_error,provider_synced_at,active,updated_at").order("display_order"),
+    admin.schema("billing").from("credit_rates").select("id,metric,unit,credits_per_unit,active,effective_from,effective_to").order("metric").order("effective_from", { ascending: false }),
     admin.schema("billing").from("credit_accounts").select("organization_id,balance,lifetime_purchased,lifetime_granted,lifetime_consumed,updated_at").order("balance", { ascending: false }).limit(500),
     admin.schema("billing").from("credit_ledger").select("id,organization_id,user_id,entry_type,amount,balance_after,external_reference,metadata,created_at").order("created_at", { ascending: false }).limit(100),
     admin.schema("app").from("organizations").select("id,name,status").order("name").limit(1000),
@@ -25,9 +27,10 @@ export default async function AdminCreditsPage() {
   const orgName = new Map((orgs.data ?? []).map((org) => [org.id, org.name]));
   const synced = (products.data ?? []).filter((product) => product.provider_sync_status === "synced" && product.provider_product_id && product.provider_price_id).length;
   const active = (products.data ?? []).filter((product) => product.active && product.provider_sync_status === "synced").length;
+  const activeRates = (rates.data ?? []).filter((rate) => rate.active);
 
   return <div className="admin-page">
-    <div className="admin-heading"><div className="admin-heading-copy"><div className="admin-eyebrow">VEXONYX / COMMERCE</div><h1>Credits</h1><p>Credit packs use the same provider-sync rules as subscriptions. VEXONYX owns the ledger and credit quantity; Stripe owns the one-time Product, Price and payment.</p></div></div>
+    <div className="admin-heading"><div className="admin-heading-copy"><div className="admin-eyebrow">VEXONYX / COMMERCE</div><h1>Credits</h1><p>Credit packs use the same provider-sync rules as subscriptions. VEXONYX owns the ledger, credit quantity and active usage rates; Stripe owns the one-time Product, Price and payment.</p></div></div>
 
     <section className="admin-grid equal">
       <article className="admin-card"><div className="admin-card-header"><h2>Create credit pack</h2><span>Auto-sync Product + Price</span></div><form className="admin-card-body admin-form" action={createCreditProductProviderBacked}>
@@ -41,12 +44,15 @@ export default async function AdminCreditsPage() {
         <small>VEXONYX creates both the Stripe Product and immutable Price. No provider ID is entered manually.</small>
         <button className="admin-button primary" type="submit">Create pack & sync Stripe</button>
       </form></article>
-      <article className="admin-card"><div className="admin-card-header"><h2>Credit catalog</h2><span>Provider health</span></div><div className="admin-card-body admin-health">
-        <div className="admin-health-row"><span>Total packs</span><b>{products.data?.length ?? 0}</b></div>
-        <div className="admin-health-row"><span>Stripe synced</span><b>{synced}</b></div>
-        <div className="admin-health-row"><span>Customer checkout active</span><b>{active}</b></div>
-        <div className="admin-health-row"><span>Manual provider IDs</span><b>Disabled</b></div>
-      </div></article>
+      <article className="admin-card"><div className="admin-card-header"><h2>Credit value</h2><span>Versioned usage rate</span></div><form className="admin-card-body admin-form" action={publishCreditRate}>
+        <input className="admin-input" name="metric" list="credit-metrics" placeholder="generation.input_tokens" required/>
+        <datalist id="credit-metrics"><option value="generation.input_tokens"/><option value="generation.output_tokens"/><option value="agent.run"/><option value="sandbox.minute"/><option value="tool.call"/><option value="report.render"/></datalist>
+        <input className="admin-input" name="unit" placeholder="1000_tokens, run, minute or call" required/>
+        <input className="admin-input" name="credits_per_unit" type="number" min="0.000001" step="0.000001" placeholder="1" required/>
+        <label><input type="checkbox" name="active" value="true" defaultChecked/> Use this rate for new usage</label>
+        <small>Publishing a new active rate atomically retires the previous version for the same metric and unit.</small>
+        <button className="admin-button" type="submit">Publish usage rate</button>
+      </form></article>
     </section>
 
     <section className="admin-grid equal">
@@ -56,11 +62,12 @@ export default async function AdminCreditsPage() {
         <textarea className="admin-input" name="reason" placeholder="Reason for adjustment" required/>
         <button className="admin-button" type="submit">Apply adjustment</button>
       </form></article>
-      <article className="admin-card"><div className="admin-card-header"><h2>Ledger safety</h2><span>Append-only history</span></div><div className="admin-card-body admin-health">
-        <div className="admin-health-row"><span>Balance mutation</span><b>Atomic RPC</b></div>
-        <div className="admin-health-row"><span>Purchase idempotency</span><b>Webhook event</b></div>
-        <div className="admin-health-row"><span>Overdraft</span><b>Blocked</b></div>
-        <div className="admin-health-row"><span>Admin changes</span><b>Reason + audit</b></div>
+      <article className="admin-card"><div className="admin-card-header"><h2>Commerce health</h2><span>Fail closed</span></div><div className="admin-card-body admin-health">
+        <div className="admin-health-row"><span>Total packs</span><b>{products.data?.length ?? 0}</b></div>
+        <div className="admin-health-row"><span>Stripe synced</span><b>{synced}</b></div>
+        <div className="admin-health-row"><span>Customer checkout active</span><b>{active}</b></div>
+        <div className="admin-health-row"><span>Active usage rates</span><b>{activeRates.length}</b></div>
+        <div className="admin-health-row"><span>Manual provider IDs</span><b>Disabled</b></div>
       </div></article>
     </section>
 
@@ -70,8 +77,10 @@ export default async function AdminCreditsPage() {
       <td>{money(product.unit_amount_minor, product.currency)}</td>
       <td><b>{String(product.provider_sync_status).replaceAll("_", " ")}</b><small>Product: {shortId(product.provider_product_id)}</small><small>Price: {shortId(product.provider_price_id)}</small>{product.provider_sync_error ? <small>Last error: {product.provider_sync_error}</small> : null}</td>
       <td><b>{product.active ? "Active" : "Inactive"}</b><small>{product.active && product.provider_sync_status === "synced" ? "Customer checkout ready" : "Not offered to customers"}</small></td>
-      <td><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{product.provider_sync_status !== "synced" || !product.provider_product_id || !product.provider_price_id ? <form action={retryCreditProductProviderSyncSafe}><input type="hidden" name="product_id" value={product.id}/><button className="admin-button" type="submit">Retry Stripe sync</button></form> : <form action={setCreditProductActiveSafe}><input type="hidden" name="product_id" value={product.id}/><input type="hidden" name="active" value={product.active ? "false" : "true"}/><button className="admin-button" type="submit">{product.active ? "Deactivate" : "Activate"}</button></form>}</div></td>
+      <td><div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{product.provider_sync_status !== "synced" || !product.provider_product_id || !product.provider_price_id ? <form action={retryCreditProductProviderSyncSafe}><input type="hidden" name="product_id" value={product.id}/><button className="admin-button" type="submit">Retry Stripe sync</button></form> : <form action={setCreditProductActiveSafe}><input type="hidden" name="product_id" value={product.id}/><input type="hidden" name="active" value={product.active ? "false" : "true"}/><button className="admin-button" type="submit">{product.active ? "Deactivate" : "Activate"}</button></form>}</div></td>
     </tr>)}</tbody></table></div></section>
+
+    <section className="admin-card"><div className="admin-card-header"><h2>Usage-rate history</h2><span>{rates.data?.length ?? 0}</span></div><div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Metric</th><th>Unit</th><th>Credits / unit</th><th>Status</th><th>Effective from</th></tr></thead><tbody>{(rates.data ?? []).map((rate) => <tr key={rate.id}><td>{rate.metric}</td><td>{rate.unit}</td><td>{Number(rate.credits_per_unit).toLocaleString()}</td><td>{rate.active ? "active" : "retired"}</td><td>{new Date(rate.effective_from).toLocaleString("en-GB")}</td></tr>)}</tbody></table></div></section>
 
     <section className="admin-card"><div className="admin-card-header"><h2>Organization balances</h2><span>{accounts.data?.length ?? 0}</span></div><div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Organization</th><th>Balance</th><th>Purchased</th><th>Granted</th><th>Consumed</th></tr></thead><tbody>{(accounts.data ?? []).map((account) => <tr key={account.organization_id}><td><b>{orgName.get(account.organization_id) || account.organization_id}</b><small>{account.organization_id}</small></td><td>{Number(account.balance).toLocaleString()}</td><td>{Number(account.lifetime_purchased).toLocaleString()}</td><td>{Number(account.lifetime_granted).toLocaleString()}</td><td>{Number(account.lifetime_consumed).toLocaleString()}</td></tr>)}</tbody></table></div></section>
 
