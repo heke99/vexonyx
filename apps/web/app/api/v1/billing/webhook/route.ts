@@ -2,78 +2,31 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { stripeRequest, verifyStripeSignature } from "@/lib/billing/stripe";
 
-function asRecord(value: unknown): Record<string, unknown> {
-  return value && typeof value === "object" ? value as Record<string, unknown> : {};
-}
+function asRecord(value: unknown): Record<string, unknown> { return value && typeof value === "object" ? value as Record<string, unknown> : {}; }
+function normalizeStatus(value: unknown, deleted = false) { if (deleted) return "cancelled"; const v=String(value||"active"); if(v==="trialing")return "trialing"; if(v==="active")return "active"; if(v==="paused")return "paused"; if(v==="canceled"||v==="cancelled")return "cancelled"; return "past_due"; }
+async function syncEntitlements(admin: NonNullable<ReturnType<typeof createAdminClient>>, organizationId:string, planId:string|null){const r=await admin.schema("billing").rpc("sync_plan_entitlements",{p_organization_id:organizationId,p_plan_id:planId});if(r.error)throw r.error;}
 
 export async function POST(request: Request) {
-  const payload = await request.text();
-  if (!verifyStripeSignature(payload, request.headers.get("stripe-signature"))) return NextResponse.json({ error: "invalid_signature" }, { status: 400 });
-  const event = JSON.parse(payload) as Record<string, unknown>;
-  const eventId = String(event.id || "");
-  const eventType = String(event.type || "");
-  const object = asRecord(asRecord(event.data).object);
-  if (!eventId || !eventType) return NextResponse.json({ error: "invalid_event" }, { status: 400 });
-  const admin = createAdminClient();
-  if (!admin) return NextResponse.json({ error: "server_unavailable" }, { status: 503 });
-
-  const existing = await admin.schema("billing").from("events").select("id").eq("external_id", eventId).maybeSingle();
-  if (existing.data) return NextResponse.json({ received: true, duplicate: true });
-  const eventInsert = await admin.schema("billing").from("events").insert({ event_type: eventType, external_id: eventId, organization_id: object.metadata && typeof object.metadata === "object" ? String((object.metadata as Record<string, unknown>).organization_id || "") || null : null, payload: event, occurred_at: new Date(Number(event.created || Math.floor(Date.now()/1000))*1000).toISOString() });
-  if (eventInsert.error && eventInsert.error.code !== "23505") return NextResponse.json({ error: "event_store_failed" }, { status: 500 });
-
-  try {
-    if (eventType === "checkout.session.completed") {
-      const metadata = asRecord(object.metadata);
-      const organizationId = String(metadata.organization_id || object.client_reference_id || "");
-      const userId = String(metadata.user_id || "") || null;
-      const kind = String(metadata.kind || "");
-      if (!organizationId) throw new Error("missing_organization");
-      const currency = String(object.currency || "USD").toUpperCase();
-      const amount = Number(object.amount_total || 0);
-      await admin.schema("billing").from("payment_transactions").upsert({ organization_id: organizationId, user_id: userId, provider: "stripe", provider_transaction_id: String(object.payment_intent || object.id), kind: kind === "credit_pack" ? "credit_pack" : "subscription", status: "succeeded", amount_minor: amount, currency, credits: Number(metadata.credits || 0), metadata: { checkout_session_id: object.id, event_id: eventId } }, { onConflict: "provider,provider_transaction_id" });
-      if (kind === "credit_pack") {
-        const credits = Number(metadata.credits || 0);
-        if (!Number.isSafeInteger(credits) || credits <= 0) throw new Error("invalid_credits");
-        const applied = await admin.schema("billing").rpc("apply_credit_entry", { p_organization_id: organizationId, p_user_id: userId, p_entry_type: "purchase", p_amount: credits, p_idempotency_key: `stripe:${eventId}`, p_external_reference: String(object.payment_intent || object.id), p_metadata: { checkout_session_id: object.id } });
-        if (applied.error) throw applied.error;
-      }
-      if (kind === "subscription" && object.subscription) {
-        const subscription = await stripeRequest(`/subscriptions/${encodeURIComponent(String(object.subscription))}`);
-        const planPrice = asRecord((Array.isArray(asRecord(asRecord(subscription.items).data)) ? (asRecord(subscription.items).data as unknown[])[0] : null));
-        const priceId = String(asRecord(planPrice.price).id || "");
-        const { data: localPrice } = await admin.schema("billing").from("plan_prices").select("plan_id").eq("provider", "stripe").eq("provider_price_id", priceId).maybeSingle();
-        await admin.schema("billing").from("subscriptions").upsert({ organization_id: organizationId, plan_id: localPrice?.plan_id || null, status: String(subscription.status || "active"), provider: "stripe", provider_subscription_id: String(subscription.id), current_period_start: subscription.current_period_start ? new Date(Number(subscription.current_period_start)*1000).toISOString() : null, current_period_end: subscription.current_period_end ? new Date(Number(subscription.current_period_end)*1000).toISOString() : null, cancel_at_period_end: Boolean(subscription.cancel_at_period_end), metadata: { latest_event_id: eventId } }, { onConflict: "organization_id" });
-      }
-    }
-
-    if (eventType.startsWith("customer.subscription.")) {
-      const metadata = asRecord(object.metadata);
-      const organizationId = String(metadata.organization_id || "");
-      if (organizationId) {
-        const status = eventType === "customer.subscription.deleted" ? "cancelled" : String(object.status || "active");
-        const firstItem = Array.isArray(asRecord(object.items).data) ? (asRecord(object.items).data as unknown[])[0] : null;
-        const providerPriceId = String(asRecord(asRecord(firstItem).price).id || "");
-        const { data: localPrice } = providerPriceId ? await admin.schema("billing").from("plan_prices").select("plan_id").eq("provider", "stripe").eq("provider_price_id", providerPriceId).maybeSingle() : { data: null };
-        const { data: previous } = await admin.schema("billing").from("subscriptions").select("id,status,plan_id").eq("organization_id", organizationId).maybeSingle();
-        const upserted = await admin.schema("billing").from("subscriptions").upsert({ organization_id: organizationId, plan_id: localPrice?.plan_id || previous?.plan_id || null, status, provider: "stripe", provider_subscription_id: String(object.id), current_period_start: object.current_period_start ? new Date(Number(object.current_period_start)*1000).toISOString() : null, current_period_end: object.current_period_end ? new Date(Number(object.current_period_end)*1000).toISOString() : null, cancel_at_period_end: Boolean(object.cancel_at_period_end), cancelled_at: object.canceled_at ? new Date(Number(object.canceled_at)*1000).toISOString() : null, metadata: { latest_event_id: eventId } }, { onConflict: "organization_id" }).select("id,plan_id").single();
-        if (!upserted.error) await admin.schema("billing").from("subscription_history").insert({ organization_id: organizationId, subscription_id: upserted.data.id, plan_id: upserted.data.plan_id, event_type: eventType, previous_status: previous?.status || null, new_status: status, provider_event_id: eventId });
-      }
-    }
-
-    if (eventType === "invoice.payment_failed" || eventType === "invoice.paid") {
-      const customerId = String(object.customer || "");
-      const { data: customer } = customerId ? await admin.schema("billing").from("billing_customers").select("organization_id").eq("provider", "stripe").eq("provider_customer_id", customerId).maybeSingle() : { data: null };
-      if (customer?.organization_id) {
-        const status = eventType === "invoice.paid" ? "succeeded" : "failed";
-        await admin.schema("billing").from("payment_transactions").upsert({ organization_id: customer.organization_id, provider: "stripe", provider_transaction_id: String(object.id), kind: "invoice", status, amount_minor: Number(object.amount_paid || object.amount_due || 0), currency: String(object.currency || "USD").toUpperCase(), metadata: { event_id: eventId, hosted_invoice_url: object.hosted_invoice_url || null } }, { onConflict: "provider,provider_transaction_id" });
-        if (eventType === "invoice.payment_failed") await admin.schema("billing").from("subscriptions").update({ status: "past_due" }).eq("organization_id", customer.organization_id);
-      }
-    }
-
-    return NextResponse.json({ received: true });
-  } catch (error) {
-    console.error("billing_webhook_processing_failed", { eventId, eventType, error: error instanceof Error ? error.message : "unknown" });
-    return NextResponse.json({ error: "processing_failed" }, { status: 500 });
+ const payload=await request.text(); if(!verifyStripeSignature(payload,request.headers.get("stripe-signature")))return NextResponse.json({error:"invalid_signature"},{status:400});
+ let event:Record<string,unknown>; try{event=JSON.parse(payload) as Record<string,unknown>;}catch{return NextResponse.json({error:"invalid_event"},{status:400});}
+ const eventId=String(event.id||""); const eventType=String(event.type||""); const object=asRecord(asRecord(event.data).object); if(!eventId||!eventType)return NextResponse.json({error:"invalid_event"},{status:400});
+ const admin=createAdminClient(); if(!admin)return NextResponse.json({error:"server_unavailable"},{status:503});
+ const existing=await admin.schema("billing").from("events").select("id,processed_at").eq("external_id",eventId).maybeSingle(); if(existing.data?.processed_at)return NextResponse.json({received:true,duplicate:true});
+ if(!existing.data){const metadata=asRecord(object.metadata);const stored=await admin.schema("billing").from("events").insert({event_type:eventType,external_id:eventId,organization_id:String(metadata.organization_id||"")||null,payload:event,occurred_at:new Date(Number(event.created||Math.floor(Date.now()/1000))*1000).toISOString()});if(stored.error&&stored.error.code!=="23505")return NextResponse.json({error:"event_store_failed"},{status:500});}
+ try{
+  if(eventType==="checkout.session.completed"){
+   const metadata=asRecord(object.metadata); const organizationId=String(metadata.organization_id||object.client_reference_id||""); const userId=String(metadata.user_id||"")||null; const kind=String(metadata.kind||""); if(!organizationId)throw new Error("missing_organization");
+   await admin.schema("billing").from("events").update({organization_id:organizationId}).eq("external_id",eventId);
+   const tx=await admin.schema("billing").from("payment_transactions").upsert({organization_id:organizationId,user_id:userId,provider:"stripe",provider_transaction_id:String(object.payment_intent||object.id),kind:kind==="credit_pack"?"credit_pack":"subscription",status:"succeeded",amount_minor:Number(object.amount_total||0),currency:String(object.currency||"USD").toUpperCase(),credits:Number(metadata.credits||0),metadata:{checkout_session_id:object.id,event_id:eventId}},{onConflict:"provider,provider_transaction_id"}); if(tx.error)throw tx.error;
+   if(kind==="credit_pack"){const credits=Number(metadata.credits||0);if(!Number.isSafeInteger(credits)||credits<=0)throw new Error("invalid_credits");const applied=await admin.schema("billing").rpc("apply_credit_entry",{p_organization_id:organizationId,p_user_id:userId,p_entry_type:"purchase",p_amount:credits,p_idempotency_key:`stripe:${eventId}`,p_external_reference:String(object.payment_intent||object.id),p_metadata:{checkout_session_id:object.id}});if(applied.error)throw applied.error;}
+   if(kind==="subscription"&&object.subscription){const subscription=await stripeRequest(`/subscriptions/${encodeURIComponent(String(object.subscription))}`);const items=asRecord(subscription.items).data;const first=Array.isArray(items)?asRecord(items[0]):{};const priceId=String(asRecord(first.price).id||"");const local=await admin.schema("billing").from("plan_prices").select("plan_id").eq("provider","stripe").eq("provider_price_id",priceId).maybeSingle();const planId=local.data?.plan_id||null;const saved=await admin.schema("billing").from("subscriptions").upsert({organization_id:organizationId,plan_id:planId,status:normalizeStatus(subscription.status),provider:"stripe",provider_subscription_id:String(subscription.id),current_period_start:subscription.current_period_start?new Date(Number(subscription.current_period_start)*1000).toISOString():null,current_period_end:subscription.current_period_end?new Date(Number(subscription.current_period_end)*1000).toISOString():null,cancel_at_period_end:Boolean(subscription.cancel_at_period_end),metadata:{latest_event_id:eventId}},{onConflict:"organization_id"});if(saved.error)throw saved.error;await syncEntitlements(admin,organizationId,planId);}
   }
+  if(eventType.startsWith("customer.subscription.")){
+   const metadata=asRecord(object.metadata);const organizationId=String(metadata.organization_id||"");if(organizationId){const items=asRecord(object.items).data;const first=Array.isArray(items)?asRecord(items[0]):{};const providerPriceId=String(asRecord(first.price).id||"");const local=providerPriceId?await admin.schema("billing").from("plan_prices").select("plan_id").eq("provider","stripe").eq("provider_price_id",providerPriceId).maybeSingle():{data:null};const previous=await admin.schema("billing").from("subscriptions").select("id,status,plan_id").eq("organization_id",organizationId).maybeSingle();const planId=local.data?.plan_id||previous.data?.plan_id||null;const status=normalizeStatus(object.status,eventType==="customer.subscription.deleted");const upserted=await admin.schema("billing").from("subscriptions").upsert({organization_id:organizationId,plan_id:planId,status,provider:"stripe",provider_subscription_id:String(object.id),current_period_start:object.current_period_start?new Date(Number(object.current_period_start)*1000).toISOString():null,current_period_end:object.current_period_end?new Date(Number(object.current_period_end)*1000).toISOString():null,cancel_at_period_end:Boolean(object.cancel_at_period_end),cancelled_at:object.canceled_at?new Date(Number(object.canceled_at)*1000).toISOString():null,metadata:{latest_event_id:eventId}},{onConflict:"organization_id"}).select("id,plan_id").single();if(upserted.error)throw upserted.error;await syncEntitlements(admin,organizationId,planId);const hist=await admin.schema("billing").from("subscription_history").insert({organization_id:organizationId,subscription_id:upserted.data.id,plan_id:upserted.data.plan_id,event_type:eventType,previous_status:previous.data?.status||null,new_status:status,provider_event_id:eventId});if(hist.error&&hist.error.code!=="23505")throw hist.error;}
+  }
+  if(eventType==="invoice.payment_failed"||eventType==="invoice.paid"){
+   const customerId=String(object.customer||"");const customer=customerId?await admin.schema("billing").from("billing_customers").select("organization_id").eq("provider","stripe").eq("provider_customer_id",customerId).maybeSingle():{data:null};if(customer.data?.organization_id){const organizationId=customer.data.organization_id;const status=eventType==="invoice.paid"?"succeeded":"failed";const tx=await admin.schema("billing").from("payment_transactions").upsert({organization_id:organizationId,provider:"stripe",provider_transaction_id:String(object.id),kind:"invoice",status,amount_minor:Number(object.amount_paid||object.amount_due||0),currency:String(object.currency||"USD").toUpperCase(),metadata:{event_id:eventId,hosted_invoice_url:object.hosted_invoice_url||null}},{onConflict:"provider,provider_transaction_id"});if(tx.error)throw tx.error;if(eventType==="invoice.payment_failed"){const r=await admin.schema("billing").from("subscriptions").update({status:"past_due"}).eq("organization_id",organizationId);if(r.error)throw r.error;}else{const sub=await admin.schema("billing").from("subscriptions").select("plan_id").eq("organization_id",organizationId).maybeSingle();if(sub.data?.plan_id){const ent=await admin.schema("billing").from("plan_entitlements").select("entitlement_value").eq("plan_id",sub.data.plan_id).eq("entitlement_key","credits.monthly").maybeSingle();const value=Number(ent.data?.entitlement_value??0);if(Number.isSafeInteger(value)&&value>0){const grant=await admin.schema("billing").rpc("apply_credit_entry",{p_organization_id:organizationId,p_user_id:null,p_entry_type:"plan_grant",p_amount:value,p_idempotency_key:`invoice-credit:${object.id}`,p_external_reference:String(object.id),p_metadata:{event_id:eventId,plan_id:sub.data.plan_id}});if(grant.error)throw grant.error;}}}}
+  }
+  const done=await admin.schema("billing").from("events").update({processed_at:new Date().toISOString(),processing_error:null}).eq("external_id",eventId);if(done.error)throw done.error;return NextResponse.json({received:true});
+ }catch(error){const message=error instanceof Error?error.message:"unknown";console.error("billing_webhook_processing_failed",{eventId,eventType,error:message});await admin.schema("billing").from("events").update({processing_error:message.slice(0,500)}).eq("external_id",eventId);return NextResponse.json({error:"processing_failed"},{status:500});}
 }
