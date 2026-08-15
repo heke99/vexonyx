@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { listActiveStripeTaxRegistrations, stripeConfigured, stripeRequest } from "@/lib/billing/stripe";
 
 const POLICY_VERSION = "2026-08-15";
+const BILLING_ADMIN_ROLES = new Set(["organization_owner", "organization_admin"]);
 
 type LegalAcceptanceInput = {
   terms?: boolean;
@@ -50,6 +51,7 @@ function policySnapshot(kind: "subscription" | "credit_pack") {
 export async function POST(request: Request) {
   const ws = await getWorkspace();
   if (!ws?.organizationId || !ws.userId) return NextResponse.json({ error: "organization_required" }, { status: 401 });
+  if (!ws.role || !BILLING_ADMIN_ROLES.has(ws.role)) return NextResponse.json({ error: "billing_admin_required" }, { status: 403 });
   if (!stripeConfigured()) return NextResponse.json({ error: "billing_not_enabled" }, { status: 503 });
   const admin = createAdminClient();
   if (!admin) return NextResponse.json({ error: "billing_unavailable" }, { status: 503 });
