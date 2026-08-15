@@ -2,9 +2,9 @@
 
 VEXONYX is in the pre-GPU production phase. The customer platform, Superadmin, tenant/RLS foundation, projects/files/reports/findings/agents shell, billing/credits/usage architecture, isolated parsing, background workers, report rendering, operational canaries and waitlist flow are implemented. Production runs on Vercel with Supabase as the current PostgreSQL platform. GPU inference, real model deployments and external offensive-tool execution remain intentionally fail-closed.
 
-## Commerce
+## Commerce catalog
 
-The approved V1 commercial catalog has been created in the connected live Stripe account and synchronized into the production Supabase billing catalog without hardcoding provider IDs into replay migrations.
+The approved V1 commercial catalog is live in the connected Stripe account and synchronized into the production Supabase billing catalog.
 
 Subscriptions:
 
@@ -20,15 +20,27 @@ One-time credit packs:
 - $50: 1,237 credits
 - $100: 2,500 credits
 
-The production database stores plans, prices, monthly credit entitlements and credit products as provider-synced catalog state. Checkout remains fail-closed unless the Vercel runtime has the required Stripe secret and webhook configuration. Automatic Stripe Tax collection is not enabled by this work; tax registrations and product tax treatment must be verified first.
+Prices are tax-exclusive. Customer Billing states that applicable sales tax/VAT/GST may be added and payment history can display provider-derived subtotal, tax and total separately.
+
+## Tax readiness
+
+Stripe Tax infrastructure is configured with Diversa Solutions LLC's verified head office at 30 North Gould Street, Sheridan, Wyoming 82801, US. The Stripe Tax default behavior is `exclusive`. Stripe currently reports zero active tax registrations, so collection remains disabled.
+
+Production migrations `20260815182411_tax_ready_commerce` and `20260815182858_tax_candidate_defaults` add tax-aware catalog fields, service-role-only `billing.tax_settings`, billing-customer tax identity, subscription tax state and immutable transaction snapshots for subtotal/tax/total/jurisdiction.
+
+The canonical Stripe candidate recorded for VEXONYX is `txcd_10105002` (Artificial Intelligence as a Service, cloud-based, business use). It is deliberately only a candidate: active subscription plans remain `pending_confirmation` with `tax_code = null`. Prepaid credit packs remain `prepaid_usage_review` with `tax_code = null` until their tax point/treatment is explicitly confirmed.
+
+Checkout collects customer tax IDs and updates Stripe customer name/address. `automatic_tax` is only added when VEXONYX collection is enabled, the selected catalog item has a confirmed tax code, and a fresh provider call still shows at least one active Stripe Tax registration. If the provider registration disappears, Checkout fails closed and clears the local collection flag.
+
+Billing webhooks persist Stripe-derived subtotal, tax, total, tax status/location and billing/tax identity. Credit packs continue to resolve credits and pre-tax catalog amount from the authoritative server-side catalog. Superadmin `/admin/tax` provides provider refresh, human tax-code confirmation and a fail-closed collection toggle. There is no code path that automatically creates a Stripe Tax registration.
 
 ## Personal usage
 
-Production migrations `20260815170114_user_usage_monthly` and `20260815171231_user_credit_monthly` provide per-user monthly resource usage and credit-consumption aggregates. Both tables are RLS-protected so authenticated reads require the current `auth.uid()` and organization membership. Triggers aggregate new usage events and negative usage credit-ledger entries, and historical user-attributed records are backfilled. Customer `/app/usage` reads the aggregates rather than scanning raw monthly ledgers, while the workspace credit balance remains pooled.
+Production migrations `20260815170114_user_usage_monthly` and `20260815171231_user_credit_monthly` provide per-user monthly resource usage and credit-consumption aggregates. Migration `20260815183221_usage_rls_initplan_optimization` keeps the same self-only + organization membership boundary while changing `auth.uid()` evaluation to an init-plan-friendly form for better scale.
 
-## Billing integrity
+## External launch gates
 
-Customer Billing reads only active, public, provider-synced offers and shows the included monthly credits for each plan. Credit-pack webhook grants resolve credits, amount and currency from the authoritative server-side `billing.credit_products` catalog before crediting the ledger. Subscription monthly credits continue to be granted from `billing.plan_entitlements` on successful paid invoices with idempotency protection.
+Vercel production still requires `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` before checkout can be considered live. Stripe currently has no webhook endpoint; do not create one unless its generated signing secret can be stored in Vercel immediately. Tax collection must remain off until legal/accounting confirmation of the catalog classification and an actual jurisdiction registration exist.
 
 ## AI/model state
 
@@ -36,4 +48,4 @@ Five aliases exist: `vexonyx-small`, `vexonyx-general`, `vexonyx-security`, `vex
 
 ## Verification
 
-The functional PR #28 change set passed lint, typecheck, Node tests, isolated-parser smoke tests, production build and clean Supabase migration replay/db lint/pgTAP before the final production-migration alignment. The exact production-aligned head must pass one final CI run before merge.
+Tax-ready Commerce is PR #29 on `agent/tax-ready-commerce-20260815`. Lint and typecheck passed on the first CI attempt; a regression-test regex was corrected before final verification. The exact final head must pass Node tests, isolated-parser smoke tests, production build and clean Supabase migration replay/db lint/pgTAP before merge.
