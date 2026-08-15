@@ -13,8 +13,8 @@ test("Superadmin login and reset use atomic service-role-only rate limits", () =
   assert.match(actions, /"password_reset"/);
   assert.match(migration, /security\.admin_auth_rate_limits/);
   assert.match(migration, /for update/i);
-  assert.match(migration, /set search_path = ''/i);
-  assert.match(migration, /revoke all on security\.admin_auth_rate_limits from public, anon, authenticated/i);
+  assert.match(migration, /set\s+search_path\s*=\s*''/i);
+  assert.match(migration, /revoke\s+all\s+on\s+security\.admin_auth_rate_limits\s+from\s+public\s*,\s*anon\s*,\s*authenticated/i);
   assert.match(migration, /service_role/is);
 });
 
