@@ -102,10 +102,14 @@ export async function createStripeCatalogPrice(input: StripePriceInput) {
   return stripeRequest("/prices", params, `catalog-price-create:${input.resourceId}`);
 }
 
-export async function deactivateStripePrice(priceId: string, resourceId: string) {
+export async function setStripePriceActive(priceId: string, resourceId: string, active: boolean) {
   if (!/^price_[A-Za-z0-9]+$/.test(priceId)) throw new Error("invalid_stripe_price_id");
-  const params = new URLSearchParams({ active: "false" });
-  return stripeRequest(`/prices/${encodeURIComponent(priceId)}`, params, `catalog-price-disable:${resourceId}`);
+  const params = new URLSearchParams({ active: String(active) });
+  return stripeRequest(
+    `/prices/${encodeURIComponent(priceId)}`,
+    params,
+    updateKey("catalog-price-active", resourceId, [active]),
+  );
 }
 
 export async function retrieveStripeProduct(productId: string) {
