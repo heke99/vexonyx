@@ -37,6 +37,7 @@ export async function POST(request: Request) {
     catalogId = product.id;
     credits = Number(product.credits);
   }
+  if (!providerPriceId) return NextResponse.json({ error: "price_not_available" }, { status: 409 });
 
   let { data: customer } = await admin.schema("billing").from("billing_customers").select("provider_customer_id").eq("organization_id", ws.organizationId).maybeSingle();
   if (!customer) {
