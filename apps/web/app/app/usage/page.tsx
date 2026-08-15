@@ -33,11 +33,9 @@ export default async function Page() {
   const month = new Date();
   month.setUTCDate(1);
   month.setUTCHours(0, 0, 0, 0);
-  const nextMonth = new Date(month);
-  nextMonth.setUTCMonth(nextMonth.getUTCMonth() + 1);
   const monthStart = month.toISOString().slice(0, 10);
 
-  const [usage, ledger, account] = await Promise.all([
+  const [usage, creditUsage, account] = await Promise.all([
     ws.supabase
       .schema("usage")
       .from("usage_user_monthly")
@@ -47,14 +45,13 @@ export default async function Page() {
       .eq("month_start", monthStart)
       .order("metric"),
     ws.supabase
-      .schema("billing")
-      .from("credit_ledger")
-      .select("amount,created_at")
+      .schema("usage")
+      .from("credit_user_monthly")
+      .select("credits_consumed")
       .eq("organization_id", ws.organizationId)
       .eq("user_id", ws.userId)
-      .eq("entry_type", "usage")
-      .gte("created_at", month.toISOString())
-      .lt("created_at", nextMonth.toISOString()),
+      .eq("month_start", monthStart)
+      .maybeSingle(),
     ws.supabase
       .schema("billing")
       .from("credit_accounts")
@@ -63,9 +60,9 @@ export default async function Page() {
       .maybeSingle(),
   ]);
 
-  const creditsUsed = (ledger.data ?? []).reduce((sum, item) => sum + Math.max(0, -Number(item.amount ?? 0)), 0);
+  const creditsUsed = Number(creditUsage.data?.credits_consumed ?? 0);
   const gpuUsage = usage.data?.find((item) => item.metric === "gpu_seconds");
-  const hasError = Boolean(usage.error || ledger.error);
+  const hasError = Boolean(usage.error || creditUsage.error);
 
   return <div className="app-content">
     <div className="app-heading"><div><h1>Your usage</h1><p>Your personal AI, agent, tool, file and execution usage for this workspace. Usage is attributed to the user who created it; the credit balance remains shared by the workspace.</p></div></div>
