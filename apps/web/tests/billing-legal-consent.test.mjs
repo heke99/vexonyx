@@ -4,7 +4,9 @@ import fs from "node:fs";
 
 const checkout = fs.readFileSync(new URL("../app/api/v1/billing/checkout/route.ts", import.meta.url), "utf8");
 const cancel = fs.readFileSync(new URL("../app/api/v1/billing/cancel/route.ts", import.meta.url), "utf8");
+const portal = fs.readFileSync(new URL("../app/api/v1/billing/portal/route.ts", import.meta.url), "utf8");
 const billingActions = fs.readFileSync(new URL("../components/billing-actions.tsx", import.meta.url), "utf8");
+const billingPage = fs.readFileSync(new URL("../app/app/billing/page.tsx", import.meta.url), "utf8");
 const terms = fs.readFileSync(new URL("../app/terms/page.tsx", import.meta.url), "utf8");
 const refunds = fs.readFileSync(new URL("../app/refunds/page.tsx", import.meta.url), "utf8");
 const cookies = fs.readFileSync(new URL("../app/cookies/page.tsx", import.meta.url), "utf8");
@@ -18,6 +20,16 @@ test("checkout fails closed without explicit legal acceptance", () => {
   assert.match(checkout, /legal\.immediate_performance/);
   assert.match(checkout, /legal\.professional_use/);
   assert.match(checkout, /kind === "subscription" && !legal\.auto_renewal/);
+});
+
+test("only organization billing admins can create checkout or portal sessions", () => {
+  assert.match(checkout, /organization_owner/);
+  assert.match(checkout, /organization_admin/);
+  assert.match(checkout, /billing_admin_required/);
+  assert.match(portal, /organization_owner/);
+  assert.match(portal, /organization_admin/);
+  assert.match(portal, /billing_admin_required/);
+  assert.match(billingPage, /Owner\/admin only/);
 });
 
 test("server stores versioned checkout acceptance and binds it to Stripe", () => {
@@ -38,13 +50,13 @@ test("checkout UI presents purchase terms before redirect", () => {
   assert.match(billingActions, /Agree & continue/);
 });
 
-test("subscription cancellation is online, admin-scoped and stops future renewal", () => {
+test("subscription cancellation is online, admin-scoped and stops future renewal without clobbering metadata", () => {
   assert.match(cancel, /organization_owner/);
   assert.match(cancel, /organization_admin/);
   assert.match(cancel, /billing_admin_required/);
   assert.match(cancel, /cancel_at_period_end: "true"/);
   assert.match(cancel, /provider_cancellation_not_confirmed/);
-  assert.match(cancel, /cancellation_source: "self_service"/);
+  assert.doesNotMatch(cancel, /metadata:\s*\{/);
 });
 
 test("terms and refund policy preserve mandatory rights while using no-refund default", () => {
