@@ -99,11 +99,11 @@ async function createSandbox(jobId: string, timeoutMs: number): Promise<SandboxS
       name,
       projectId: projectId(),
       runtime: "python3.13",
-      resources: { vcpus: "1", memory: "2048" },
+      resources: { vcpus: 1 },
       networkPolicy: { mode: "deny-all" },
       ports: [],
       persistent: false,
-      timeout: String(Math.min(Math.max(timeoutMs + 60_000, 120_000), 360_000)),
+      timeout: Math.min(Math.max(timeoutMs + 60_000, 120_000), 360_000),
       tags: { workload: "isolated-parser", job: jobId.slice(0, 36) },
     }),
   });

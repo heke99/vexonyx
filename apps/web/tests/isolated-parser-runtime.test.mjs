@@ -15,8 +15,10 @@ test("Vercel parser sandbox is deny-all, bounded, non-sudo and always stopped", 
   assert.match(controller, /project_id/);
   assert.match(controller, /base64url/);
   assert.match(controller, /runtime:\s*"python3\.13"/);
-  assert.match(controller, /vcpus:\s*"1"/);
-  assert.match(controller, /memory:\s*"2048"/);
+  assert.match(controller, /resources:\s*\{\s*vcpus:\s*1\s*\}/);
+  assert.doesNotMatch(controller, /resources:\s*\{[^}]*memory/);
+  assert.match(controller, /timeout:\s*Math\.min\(/);
+  assert.doesNotMatch(controller, /timeout:\s*String\(/);
   assert.match(controller, /networkPolicy:\s*\{\s*mode:\s*"deny-all"\s*\}/);
   assert.match(controller, /ports:\s*\[\]/);
   assert.match(controller, /persistent:\s*false/);
