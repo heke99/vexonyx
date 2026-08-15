@@ -32,7 +32,7 @@ test("credit values are versioned and customer-visible from one catalog", () => 
   assert.match(customerPage, /plan_entitlements/);
 });
 
-test("marketing exports use dedicated leased retries and private storage", () => {
+test("marketing exports use dedicated leased retries, private storage and a self-cleaning canary", () => {
   const action = read("../app/admin/audience-actions.ts");
   const worker = read("../app/api/internal/workers/marketing-exports/route.ts");
   const migration = read("../../../supabase/migrations/20260815110823_marketing_export_queue.sql");
@@ -43,7 +43,13 @@ test("marketing exports use dedicated leased retries and private storage", () =>
   assert.match(worker, /finish_job/);
   assert.match(worker, /lease_generation/);
   assert.match(worker, /admin-exports/);
-  assert.match(worker, /upsert:true/);
+  assert.match(worker, /upsert:\s*true/);
+  assert.match(worker, /runtime\.marketing_export_canary/);
+  assert.match(worker, /storageRoundTrip/);
+  assert.match(worker, /cleanupVerified/);
+  assert.match(worker, /_canary\/marketing/);
+  assert.match(worker, /\.download\(/);
+  assert.match(worker, /\.remove\(/);
   assert.match(migration, /'marketing'/);
 });
 
