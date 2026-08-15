@@ -9,7 +9,11 @@ const read = (relative) => fs.readFileSync(new URL(relative, import.meta.url), "
 
 test("Vercel parser sandbox is deny-all, bounded, non-sudo and always stopped", () => {
   const controller = read("../lib/sandbox/vercel-isolated-parser.ts");
+  assert.match(controller, /Symbol\.for\("@vercel\/request-context"\)/);
+  assert.match(controller, /x-vercel-oidc-token/);
   assert.match(controller, /VERCEL_OIDC_TOKEN/);
+  assert.match(controller, /project_id/);
+  assert.match(controller, /base64url/);
   assert.match(controller, /runtime:\s*"python3\.13"/);
   assert.match(controller, /vcpus:\s*"1"/);
   assert.match(controller, /memory:\s*"2048"/);
