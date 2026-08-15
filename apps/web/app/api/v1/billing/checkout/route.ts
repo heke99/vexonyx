@@ -9,7 +9,7 @@ function origin() {
 
 export async function POST(request: Request) {
   const ws = await getWorkspace();
-  if (!ws?.organizationId) return NextResponse.json({ error: "organization_required" }, { status: 401 });
+  if (!ws?.organizationId || !ws.userId) return NextResponse.json({ error: "organization_required" }, { status: 401 });
   const admin = createAdminClient();
   if (!admin) return NextResponse.json({ error: "billing_unavailable" }, { status: 503 });
 
