@@ -6,16 +6,21 @@ const read = (relative) => fs.readFileSync(new URL(relative, import.meta.url), "
 
 test("Superadmin Commerce creates Stripe products and prices instead of accepting manual provider IDs", () => {
   const actions = read("../app/admin/commerce-actions.ts");
+  const providerActions = read("../app/admin/commerce-provider-actions.ts");
   const billingPage = read("../app/admin/billing/page.tsx");
   const creditsPage = read("../app/admin/credits/page.tsx");
   assert.match(actions, /createStripeCatalogProduct/);
   assert.match(actions, /createStripeCatalogPrice/);
   assert.match(actions, /provider_sync_status:\s*"pending"/);
   assert.match(actions, /provider_sync_status:\s*"synced"/);
+  assert.match(providerActions, /provider_product_id:\s*providerProductId/);
+  assert.match(providerActions, /setPlanPriceActiveSafe/);
   assert.doesNotMatch(billingPage, /name="provider_price_id"/);
   assert.doesNotMatch(creditsPage, /name="provider_price_id"/);
   assert.match(billingPage, /Create draft & sync Stripe/);
   assert.match(creditsPage, /Create pack & sync Stripe/);
+  assert.match(billingPage, /setPlanPriceActiveSafe/);
+  assert.match(creditsPage, /createCreditProductProviderBacked/);
 });
 
 test("Stripe catalog creation uses stable idempotency and immutable provider prices", () => {
@@ -25,6 +30,15 @@ test("Stripe catalog creation uses stable idempotency and immutable provider pri
   assert.match(stripe, /recurring\[interval\]/);
   assert.match(stripe, /setStripePriceActive/);
   assert.doesNotMatch(stripe, /unit_amount.*\/prices\/\$\{/);
+});
+
+test("credit provider sync checkpoints Product identity before Price creation", () => {
+  const providerActions = read("../app/admin/commerce-provider-actions.ts");
+  const checkpoint = providerActions.indexOf("provider_product_id: providerProductId");
+  const priceCreate = providerActions.indexOf("createStripeCatalogPrice");
+  assert.ok(checkpoint >= 0);
+  assert.ok(priceCreate >= 0);
+  assert.match(providerActions, /Persist the Product before price creation/);
 });
 
 test("checkout requires local publication and provider sync on every customer offer", () => {
@@ -39,7 +53,7 @@ test("checkout requires local publication and provider sync on every customer of
 });
 
 test("database migration prevents public or checkout-active unsynced catalog rows", () => {
-  const migration = read("../../../supabase/migrations/20260815105000_stripe_catalog_provider_sync.sql");
+  const migration = read("../../../supabase/migrations/20260815110715_stripe_catalog_provider_sync.sql");
   assert.match(migration, /plan_prices_checkout_ready_check/);
   assert.match(migration, /credit_products_checkout_ready_check/);
   assert.match(migration, /public_plan_provider_not_synced/);
