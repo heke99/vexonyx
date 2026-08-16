@@ -1,4 +1,11 @@
 import { ContentPage } from "@/components/content-page";
+import { createPageMetadata } from "@/lib/seo";
+
+export const metadata = createPageMetadata(
+  "AI Pentesting Platform",
+  "Explore the VEXONYX AI cybersecurity workspace for authorized penetration testing, project context, persistent agents, evidence and reporting.",
+  "/product",
+);
 
 export default function Page(){
   return <ContentPage label="PRODUCT" title="One workspace for serious security work." intro="VEXONYX connects projects, context, agents, findings, evidence and reports so security teams can move from authorized scope to a reviewable result without losing context." cards={[

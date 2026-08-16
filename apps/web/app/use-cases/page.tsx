@@ -1,4 +1,11 @@
 import { ContentPage } from "@/components/content-page";
+import { createPageMetadata } from "@/lib/seo";
+
+export const metadata = createPageMetadata(
+  "AI Cybersecurity Use Cases",
+  "Use VEXONYX for authorized security assessments, source-code analysis, attack-surface analysis, evidence collection and technical reporting.",
+  "/use-cases",
+);
 
 export default function Page(){
   return <ContentPage label="USE CASES" title="Structured security work, not generic automation." intro="VEXONYX is designed for professional and explicitly authorized security teams working across applications, APIs, infrastructure, cloud and source code." cards={[

@@ -3,8 +3,16 @@ import { HeroAttackSurface } from "@/components/hero-attack-surface";
 import { HeroWorkspace } from "@/components/hero-workspace";
 import { MarketingFooter } from "@/components/marketing-footer";
 import { MarketingHeader } from "@/components/marketing-header";
+import { SeoJsonLd } from "@/components/seo-json-ld";
 import { WaitlistForm } from "@/components/waitlist-form";
+import { createPageMetadata, DEFAULT_DESCRIPTION } from "@/lib/seo";
 import heroStyles from "./home-hero.module.css";
+
+export const metadata = createPageMetadata(
+  "AI Cybersecurity & Penetration Testing Platform",
+  DEFAULT_DESCRIPTION,
+  "/",
+);
 
 const proof = [
   ["Pentesting workspace", "Run authorized web, API, cloud and code security assessments with scope, evidence and review connected from the start."],
@@ -24,7 +32,7 @@ const capabilities = [
 ] as const;
 
 export default function HomePage() {
-  return <main className="marketing-page"><MarketingHeader />
+  return <main className="marketing-page"><SeoJsonLd /><MarketingHeader />
     <section className={`hero shell ${heroStyles.cyber}`}>
       <div className={heroStyles.intro}>
         <div className={`hero-copy ${heroStyles.copyLeft}`}>

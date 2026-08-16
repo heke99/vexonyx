@@ -1,20 +1,26 @@
 # Current task
 
-Finalize VEXONYX tax-ready Commerce in PR #29 on branch `agent/tax-ready-commerce-20260815`.
+Integrate the approved VEXONYX brand mark across the web product and complete the first production SEO/discovery hardening pass.
 
-Implemented operationally and in code/database:
+Status: IMPLEMENTED_NOT_VERIFIED
 
-- Stripe Tax head office is the verified Diversa Solutions LLC address in Sheridan, Wyoming;
-- Stripe Tax default price behavior is exclusive;
-- Stripe currently has zero active tax registrations, so collection remains intentionally off;
-- subscriptions use `txcd_10105002` only as the verified Stripe AIaaS business-use candidate and remain `pending_confirmation` until human/legal confirmation;
-- prepaid credit packs remain `prepaid_usage_review` until their tax point/classification is explicitly confirmed;
-- production Supabase is migration-synced through `20260815183221_usage_rls_initplan_optimization`;
-- Checkout collects tax IDs plus customer name/address, but only enables `automatic_tax` when local collection is enabled, the catalog item has a confirmed tax code, and Stripe still reports at least one active registration;
-- billing webhooks persist subtotal, tax, total, jurisdiction and customer tax identity from Stripe;
-- Superadmin `/admin/tax` exposes provider refresh, classification confirmation and a fail-closed tax-collection gate;
-- no code path automatically creates Stripe Tax registrations.
+Implemented on `agent/brand-seo-20260816`:
 
-Exact next action: pass final PR #29 app CI and clean Supabase migration replay/db lint/pgTAP, merge only if green, then verify the production Vercel deployment and `/ready`.
+- exact VEXONYX favicon derived from the approved logo and used by website chrome;
+- Apple touch icon for branded saved-site/mobile surfaces;
+- canonical `https://vexonyx.com` SEO helper and unique canonical metadata for primary marketing pages;
+- richer Open Graph/Twitter metadata and generated social preview image;
+- `robots.txt`, `sitemap.xml` and web manifest metadata routes;
+- Organization + WebSite JSON-LD on the homepage;
+- noindex/noarchive metadata for authenticated workspace and Superadmin surfaces;
+- permanent `www.vexonyx.com` to apex canonical redirect;
+- stronger crawlable footer internal links;
+- official website backlink from the public GitHub README;
+- optional Google/Bing ownership-verification environment variables;
+- SEO regression tests.
 
-External launch gates remain: Vercel production still needs the Stripe secret and webhook signing secret before checkout can be considered live. Do not create a Stripe webhook endpoint unless its signing secret can be stored in Vercel immediately. Do not create tax registrations or confirm tax classifications without the required human/legal decision. GPU/model/tool execution remains fail-closed until the separate 4× H200 rollout gates pass.
+The previous tax/checkout work recorded here was completed and subsequently superseded by merged main-branch work through PR #34 before this task began.
+
+Exact next action: commit the complete SEO/brand tree, open a PR, pass lint/typecheck/tests/build and Vercel preview verification, then merge only if green and verify production `/favicon.ico`, `/robots.txt`, `/sitemap.xml`, `/manifest.webmanifest`, canonical redirect and homepage metadata.
+
+External follow-up after production verification: add the production domain to Google Search Console/Bing Webmaster Tools, store their public verification tokens in Vercel if required, submit `https://vexonyx.com/sitemap.xml`, and pursue only relevant earned/editorial backlinks rather than link-scheme or bulk-link tactics.
