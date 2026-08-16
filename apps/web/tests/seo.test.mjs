@@ -21,12 +21,12 @@ test("SEO exposes canonical public discovery files and keeps private surfaces ou
   assert.match(layout, /max-image-preview/);
 });
 
-test("brand favicon is used in the website chrome and private layouts are noindex", () => {
+test("brand icon is used in the website chrome and private layouts are noindex", () => {
   const brand = read("../components/brand.tsx");
   const workspace = read("../app/app/layout.tsx");
   const admin = read("../app/admin/layout.tsx");
 
-  assert.match(brand, /\/favicon\.ico/);
+  assert.match(brand, /\/icon\.png/);
   assert.match(workspace, /index:\s*false/);
   assert.match(admin, /index:\s*false/);
 });
