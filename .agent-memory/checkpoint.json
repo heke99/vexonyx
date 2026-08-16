@@ -1,32 +1,44 @@
 {
   "project": "VEXONYX",
-  "date": "2026-08-15",
-  "branch": "agent/tax-ready-commerce-20260815",
-  "phase": "tax-ready-commerce",
-  "status": "IMPLEMENTED_PENDING_FINAL_CI_MERGE_DEPLOY_VERIFY",
-  "supabaseMigrationHead": "20260815183221",
-  "pr": 29,
+  "date": "2026-08-16",
+  "branch": "agent/brand-seo-20260816",
+  "phase": "brand-and-seo",
+  "status": "IN_PROGRESS_AFTER_ICON_BUILD_FIX",
+  "baseMainCommit": "cc5a38087a71103a1eaede99c30d725e3f471010",
+  "pr": 35,
   "verified": [
-    "Stripe Tax head office synchronized to verified Sheridan Wyoming address",
-    "Stripe Tax default behavior is exclusive",
-    "Stripe active tax registration count is zero and collection remains disabled",
-    "VEXONYX catalog tax candidates recorded without silently confirming legal classification",
-    "tax-ready billing schema and immutable transaction tax snapshots applied in production",
-    "Checkout collection gate rechecks live Stripe registrations and confirmed product classification",
-    "Superadmin tax readiness controls are fail-closed and never create registrations",
-    "personal usage RLS auth init-plan performance warnings remediated"
+    "main branch already contains the previously pending commerce/legal work through PR #34",
+    "approved user-supplied logo was converted into square PNG browser/search and Apple touch assets",
+    "lint passed on the first PR 35 CI attempt",
+    "typecheck passed on the first PR 35 CI attempt",
+    "all Node tests passed including SEO regressions on the first PR 35 CI attempt",
+    "isolated parser smoke tests passed on the first PR 35 CI attempt"
   ],
+  "implemented": [
+    "brand icon and Apple touch icon",
+    "canonical SEO helper and primary-page metadata",
+    "Open Graph and Twitter metadata with social image route",
+    "robots and sitemap metadata routes",
+    "web app manifest",
+    "homepage Organization and WebSite JSON-LD",
+    "private workspace and Superadmin noindex metadata",
+    "www-to-apex permanent redirect",
+    "crawlable footer navigation",
+    "official-site backlink from public GitHub README",
+    "Google and Bing verification placeholders",
+    "SEO regression tests"
+  ],
+  "knownFailure": "The first PR 35 build failed because Next/Turbopack could not decode the generated multi-size ICO. The ICO was removed and replaced by the exact approved square PNG as app/icon.png.",
   "next": [
-    "pass final PR 29 app CI and clean migration replay/db lint/pgTAP",
-    "merge PR 29 only if green",
-    "verify Vercel production deployment and sanitized readiness",
-    "verify Stripe and Supabase tax state remains collection-off"
+    "push PNG icon correction",
+    "pass rerun lint, typecheck, tests and production build",
+    "verify Vercel preview routes and metadata",
+    "merge only if green",
+    "verify production icon, robots, sitemap, manifest, canonical redirect and metadata"
   ],
   "externalGates": [
-    "Vercel STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET remain required before live checkout",
-    "no Stripe webhook endpoint should be created until its signing secret can be stored immediately",
-    "tax registrations require actual authority registration and must not be automated",
-    "subscription tax code candidate txcd_10105002 and prepaid credit treatment require human/legal confirmation",
-    "GPU deployments remain disabled until the separate 4x H200 rollout gates pass"
+    "Google Search Console ownership/submission requires the user's Google account or verification token",
+    "Bing Webmaster Tools ownership/submission requires the user's Microsoft account or verification token",
+    "external backlinks must be earned or placed on relevant controlled profiles/publications; do not create link-spam schemes"
   ]
 }

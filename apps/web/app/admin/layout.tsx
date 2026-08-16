@@ -1,8 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Brand } from "@/components/brand";
 import { requireSuperadmin } from "@/lib/admin/guard";
 import { signOutAdmin } from "./actions";
 import "./admin.css";
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false, noarchive: true },
+};
 
 const groups = [
   { label: "Overview", items: [["/admin", "Command center", "⌂"]] },
@@ -25,7 +30,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </nav>
         <div className="admin-sidebar-footer"><div className="admin-avatar">{String(profile.display_name ?? "A").slice(0,1).toUpperCase()}</div><div><b>{profile.display_name || "Superadmin"}</b><small>Privileged access</small></div></div>
       </aside>
-      <main className="admin-main"><header className="admin-topbar"><div><span className="admin-live-dot" /> Production</div><div className="admin-topbar-links"><a href="https://www.vexonyx.com">View website</a><form action={signOutAdmin}><button className="admin-button" type="submit">Sign out</button></form></div></header>{children}</main>
+      <main className="admin-main"><header className="admin-topbar"><div><span className="admin-live-dot" /> Production</div><div className="admin-topbar-links"><a href="https://vexonyx.com">View website</a><form action={signOutAdmin}><button className="admin-button" type="submit">Sign out</button></form></div></header>{children}</main>
     </div>
   );
 }

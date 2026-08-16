@@ -1,0 +1,17 @@
+.mark {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  flex: 0 0 28px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: #f7f6f3;
+}
+
+.mark img {
+  width: 24px;
+  height: 24px;
+  display: block;
+}

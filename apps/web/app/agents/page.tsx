@@ -1,4 +1,11 @@
 import { ContentPage } from "@/components/content-page";
+import { createPageMetadata } from "@/lib/seo";
+
+export const metadata = createPageMetadata(
+  "AI Security Agents",
+  "VEXONYX security agents combine project context, approval gates, crash-safe progress and hard execution limits for authorized security work.",
+  "/agents",
+);
 
 export default function Page(){
   return <ContentPage label="AGENTS" title="Agents that stay inside the engagement." intro="VEXONYX agents can reason over project context while authorization, permissions and target scope remain outside model control." cards={[

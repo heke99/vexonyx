@@ -8,12 +8,12 @@ export function MarketingFooter() {
         <p>
           AI platform for cybersecurity and authorized penetration testing. Operated by Diversa Solutions LLC, Wyoming, United States. Contact: <a href="mailto:info@vexonyx.com">info@vexonyx.com</a>.
         </p>
-        <nav aria-label="Legal">
+        <nav aria-label="Footer navigation">
+          <Link href="/product">Product</Link>
+          <Link href="/use-cases">Use cases</Link>
+          <Link href="/security">Security</Link>
+          <Link href="/pricing">Pricing</Link>
           <Link href="/legal">Legal</Link>
-          <Link href="/terms">Terms</Link>
-          <Link href="/privacy">Privacy</Link>
-          <Link href="/refunds">Refunds</Link>
-          <Link href="/cookies">Cookies</Link>
           <Link href="/contact">Contact</Link>
         </nav>
         <span>© 2026 Diversa Solutions LLC</span>
