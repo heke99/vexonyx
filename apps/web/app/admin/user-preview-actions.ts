@@ -7,6 +7,7 @@ import { requireSuperadmin } from "@/lib/admin/guard";
 import { ADMIN_PREVIEW_COOKIE, ADMIN_PREVIEW_TTL_MINUTES, hashPreviewToken } from "@/lib/admin/impersonation";
 
 const DEMO_EMAIL = "demo@vexonyx.com";
+const DEMO_APP_METADATA = { vexonyx_internal_provisioning: "demo" } as const;
 
 async function audit(admin: Awaited<ReturnType<typeof requireSuperadmin>>["admin"], actorUserId: string, action: string, resourceId: string | null, metadata: Record<string, unknown>, organizationId?: string | null) {
   await admin.schema("audit").from("audit_logs").insert({
@@ -34,10 +35,21 @@ export async function provisionDemoUser(formData: FormData) {
     const existing = await admin.auth.admin.getUserById(existingDemoUserId);
     if (existing.error || !existing.data.user) throw existing.error ?? new Error("Could not load demo user.");
     demoUser = existing.data.user;
-    const updated = await admin.auth.admin.updateUserById(demoUser.id, { password, email_confirm: true, user_metadata: { ...(demoUser.user_metadata ?? {}), display_name: "VEXONYX Demo", account_kind: "demo" } });
+    const updated = await admin.auth.admin.updateUserById(demoUser.id, {
+      password,
+      email_confirm: true,
+      user_metadata: { ...(demoUser.user_metadata ?? {}), display_name: "VEXONYX Demo", account_kind: "demo" },
+      app_metadata: { ...(demoUser.app_metadata ?? {}), ...DEMO_APP_METADATA },
+    });
     if (updated.error) throw updated.error;
   } else {
-    const created = await admin.auth.admin.createUser({ email: DEMO_EMAIL, password, email_confirm: true, user_metadata: { display_name: "VEXONYX Demo", account_kind: "demo" } });
+    const created = await admin.auth.admin.createUser({
+      email: DEMO_EMAIL,
+      password,
+      email_confirm: true,
+      user_metadata: { display_name: "VEXONYX Demo", account_kind: "demo" },
+      app_metadata: DEMO_APP_METADATA,
+    });
     if (created.error || !created.data.user) throw created.error ?? new Error("Could not create demo user.");
     demoUser = created.data.user;
   }
