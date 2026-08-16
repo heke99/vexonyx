@@ -37,12 +37,6 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
-      {
-        source: "/:path*",
-        has: [{ type: "host", value: "www.vexonyx.com" }],
-        destination: "https://vexonyx.com/:path*",
-        permanent: true,
-      },
       ...waitlistRedirects.map((source) => ({ source, destination: "/waitlist", permanent: false })),
       { source: "/invite/:path*", destination: "/waitlist", permanent: false },
       { source: "/auth/:path*", destination: "/waitlist", permanent: false },
