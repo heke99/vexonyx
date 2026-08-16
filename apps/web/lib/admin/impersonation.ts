@@ -5,10 +5,22 @@ import { redirect } from "next/navigation";
 import { requireSuperadmin } from "@/lib/admin/guard";
 
 export const ADMIN_PREVIEW_COOKIE = "vexonyx_admin_preview";
+export const ADMIN_PREVIEW_COOKIE_PATH = "/preview";
 export const ADMIN_PREVIEW_TTL_MINUTES = 15;
 
 export function hashPreviewToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
+}
+
+async function clearPreviewCookie() {
+  const cookieStore = await cookies();
+  cookieStore.set(ADMIN_PREVIEW_COOKIE, "", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: ADMIN_PREVIEW_COOKIE_PATH,
+    maxAge: 0,
+  });
 }
 
 export async function requireUserPreview(targetUserId: string) {
@@ -31,7 +43,7 @@ export async function requireUserPreview(targetUserId: string) {
     if (session?.id && !session.ended_at) {
       await admin.schema("security").from("admin_impersonation_sessions").update({ ended_at: new Date().toISOString(), ended_reason: "expired" }).eq("id", session.id);
     }
-    (await cookies()).delete(ADMIN_PREVIEW_COOKIE);
+    await clearPreviewCookie();
     redirect(`/admin/users/${targetUserId}?preview=expired`);
   }
 
@@ -43,7 +55,7 @@ export async function requireUserPreview(targetUserId: string) {
 
   if (!targetProfile || targetProfile.is_superadmin || !membership || auth.error || !auth.data.user) {
     await admin.schema("security").from("admin_impersonation_sessions").update({ ended_at: new Date().toISOString(), ended_reason: "target_no_longer_eligible" }).eq("id", session.id);
-    (await cookies()).delete(ADMIN_PREVIEW_COOKIE);
+    await clearPreviewCookie();
     redirect(`/admin/users/${targetUserId}?preview=invalid`);
   }
 
