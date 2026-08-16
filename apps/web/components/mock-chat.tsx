@@ -87,7 +87,7 @@ export function MockChat({
         organizationId,
         conversationId:conversationId || undefined,
         projectId:projectId || undefined,
-        agentProfileId:agentProfileId || undefined,
+        agentProfileId:agentProfileId || null,
         modelSelectionMode:mode,
         selectedModelAlias,
       }),
