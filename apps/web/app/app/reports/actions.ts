@@ -1,7 +1,16 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { getWorkspace } from "@/lib/workspace";
+
+export async function createReportFromLibrary(formData:FormData){
+ const ws=await getWorkspace();if(!ws?.organizationId||ws.role==="viewer")throw new Error("Workspace write access required");
+ const projectId=String(formData.get("project_id")??"").trim();const title=String(formData.get("title")??"").trim().slice(0,240);if(!/^[0-9a-f-]{36}$/i.test(projectId)||!title)throw new Error("Project and report title are required");
+ const {data:project}=await ws.supabase.schema("app").from("projects").select("id").eq("id",projectId).eq("organization_id",ws.organizationId).is("deleted_at",null).maybeSingle();if(!project)throw new Error("Project not found");
+ const {data:report,error}=await ws.supabase.schema("reports").from("reports").insert({organization_id:ws.organizationId,project_id:projectId,created_by:ws.userId,title,status:"draft"}).select("id").single();if(error||!report?.id)throw new Error("Unable to create report");
+ revalidatePath("/app/reports");revalidatePath(`/app/projects/${projectId}`);redirect(`/app/reports/${report.id}`);
+}
 
 export async function requestReportRender(formData:FormData){
  const ws=await getWorkspace();if(!ws?.organizationId)throw new Error("Organization required");const reportId=String(formData.get("report_id")??"");const format=String(formData.get("format")??"");if(!/^[0-9a-f-]{36}$/i.test(reportId)||!["pdf","docx"].includes(format))throw new Error("Invalid report render request");
