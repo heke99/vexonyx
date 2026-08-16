@@ -152,7 +152,8 @@ export async function POST(request:Request) {
   let attemptId:string|undefined;
   const startedAt = Date.now();
   const inputTokens = approximateTokens(prompt);
-  const assistantText = `Pre-GPU preview completed using ${modelSelectionMode === "specific" ? route.chosen : `VEXONYX ${modelSelectionMode[0].toUpperCase()}${modelSelectionMode.slice(1)}`} routing. Your conversation, agent profile and generation state were saved. Private model inference is not connected yet.`;
+  const modelModeLabel = modelSelectionMode.charAt(0).toUpperCase() + modelSelectionMode.slice(1);
+  const assistantText = `Pre-GPU preview completed using ${modelSelectionMode === "specific" ? route.chosen : `VEXONYX ${modelModeLabel}`} routing. Your conversation, agent profile and generation state were saved. Private model inference is not connected yet.`;
   const outputTokens = approximateTokens(assistantText);
 
   if (!generationRequestId) {
