@@ -34,22 +34,22 @@ select has_column('ai','generation_requests','idempotency_key','Generation reque
 select has_column('ai','generation_requests','project_id','Generation requests bind project context');
 select has_column('app','messages','idempotency_key','Messages have retry-safe idempotency keys');
 
-select like(
+select extensions.like(
   (select qual from pg_policies where schemaname='app' and tablename='messages' and policyname='messages_owner_select'),
   '%c.organization_id = messages.organization_id%',
   'Message select RLS binds the conversation to the same organization'
 );
-select like(
+select extensions.like(
   (select with_check from pg_policies where schemaname='app' and tablename='messages' and policyname='messages_insert_user_only'),
   '%c.organization_id = messages.organization_id%',
   'Message insert RLS binds the conversation to the same organization'
 );
-select like(
+select extensions.like(
   (select qual from pg_policies where schemaname='app' and tablename='messages' and policyname='messages_update_user_only'),
   '%c.organization_id = messages.organization_id%',
   'Message update RLS binds the conversation to the same organization'
 );
-select like(
+select extensions.like(
   (select qual from pg_policies where schemaname='app' and tablename='messages' and policyname='messages_delete_user_only'),
   '%c.organization_id = messages.organization_id%',
   'Message delete RLS binds the conversation to the same organization'
