@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(6);
+select plan(10);
 
 insert into auth.users(id,aud,role,email,encrypted_password,email_confirmed_at,created_at,updated_at,raw_app_meta_data,raw_user_meta_data) values
 ('33333333-3333-4333-8333-333333333331','authenticated','authenticated','chat-a@vexonyx.invalid','',now(),now(),now(),'{}'::jsonb,'{}'::jsonb),
@@ -33,6 +33,27 @@ reset role;
 select has_column('ai','generation_requests','idempotency_key','Generation requests have idempotency keys');
 select has_column('ai','generation_requests','project_id','Generation requests bind project context');
 select has_column('app','messages','idempotency_key','Messages have retry-safe idempotency keys');
+
+select like(
+  (select qual from pg_policies where schemaname='app' and tablename='messages' and policyname='messages_owner_select'),
+  '%c.organization_id = messages.organization_id%',
+  'Message select RLS binds the conversation to the same organization'
+);
+select like(
+  (select with_check from pg_policies where schemaname='app' and tablename='messages' and policyname='messages_insert_user_only'),
+  '%c.organization_id = messages.organization_id%',
+  'Message insert RLS binds the conversation to the same organization'
+);
+select like(
+  (select qual from pg_policies where schemaname='app' and tablename='messages' and policyname='messages_update_user_only'),
+  '%c.organization_id = messages.organization_id%',
+  'Message update RLS binds the conversation to the same organization'
+);
+select like(
+  (select qual from pg_policies where schemaname='app' and tablename='messages' and policyname='messages_delete_user_only'),
+  '%c.organization_id = messages.organization_id%',
+  'Message delete RLS binds the conversation to the same organization'
+);
 
 select * from finish();
 rollback;
