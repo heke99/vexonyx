@@ -1,4 +1,5 @@
 import { AppSidebar } from "@/components/app-sidebar";
+import { WorkspaceDashboard } from "@/components/workspace-dashboard";
 import { requireUserPreview } from "@/lib/admin/impersonation";
 import { stopUserPreview } from "../../../user-preview-actions";
 
@@ -38,15 +39,18 @@ export default async function UserPreviewPage({ params }: { params: Promise<{ us
       <div style={{ pointerEvents: "none", userSelect: "none" }}><AppSidebar /></div>
       <main className="app-main">
         <header className="app-topbar"><span>Authorized security workspace</span><span>SUPERADMIN PREVIEW · external actions disabled</span></header>
-        <div className="app-content">
-          <div className="app-heading"><div><h1>Security workspace</h1><p>Chats, projects, agents, evidence, billing, usage and integrations stay attached to the same organization and account history.</p></div><div style={{ display: "flex", gap: 10 }}><span className="button button-small secondary">{String(plan?.name || "Choose plan")}</span><span className="button button-small" aria-disabled="true">New chat</span></div></div>
-          <section className="metric-grid">{metrics.map(([label, value]) => <div className="metric" key={label}><span>{label}</span><strong>{typeof value === "number" ? value.toLocaleString() : value}</strong></div>)}</section>
-          <section className="workspace-grid">
-            <article className="workspace-card"><header><h2>Recent chats</h2><span>View all →</span></header>{recentChats.data?.length ? recentChats.data.map((chat) => <div className="project-row" key={chat.id}><div><b>{chat.title}</b><small>{chat.status} · {new Date(chat.updated_at).toLocaleString("en-GB")}</small></div><span>Open →</span></div>) : <div className="empty-state"><div><b>No chats yet.</b><p>Start a persistent VEXONYX conversation.</p></div></div>}</article>
-            <article className="workspace-card"><header><h2>Recent projects</h2><span>View all →</span></header>{recentProjects.data?.length ? recentProjects.data.map((project) => <div className="project-row" key={project.id}><div><b>{project.name}</b><small>{project.status}</small></div><span>Open →</span></div>) : <div className="empty-state"><div><b>No projects yet.</b><p>Create your first authorized assessment.</p></div></div>}<div className="workspace-form"><input disabled placeholder="New project name" /><button className="button" disabled type="button">Create</button></div></article>
-          </section>
-          <section className="workspace-grid"><article className="workspace-card"><header><h2>Account</h2><span>Manage →</span></header><div className="project-row"><div><b>Plan</b><small>{String(sub?.status || "inactive")}</small></div><span>{String(plan?.name || "No paid plan")}</span></div><div className="project-row"><div><b>Credit balance</b><small>{Number(credits.data?.lifetime_consumed ?? 0).toLocaleString()} consumed lifetime</small></div><span>{Number(credits.data?.balance ?? 0).toLocaleString()}</span></div><div className="project-row"><div><b>Connected integrations</b><small>Organization-scoped</small></div><span>{integrations.count ?? 0}</span></div></article><article className="workspace-card"><header><h2>Runtime status</h2><span>Agents →</span></header><div className="empty-state"><div><b>Product workspace ready; external execution remains gated.</b><p>Chats, billing, credits, usage, connectors, authorization and agent state are wired before real GPU/model execution is enabled.</p></div></div></article></section>
-        </div>
+        <WorkspaceDashboard
+          readOnly
+          metrics={metrics}
+          recentChats={recentChats.data ?? []}
+          recentProjects={recentProjects.data ?? []}
+          planName={String(plan?.name || "Choose plan")}
+          subscriptionStatus={String(sub?.status || "inactive")}
+          creditBalance={Number(credits.data?.balance ?? 0)}
+          lifetimeConsumed={Number(credits.data?.lifetime_consumed ?? 0)}
+          integrationsCount={integrations.count ?? 0}
+          organizationId={organizationId}
+        />
       </main>
     </div>
   </div>;
