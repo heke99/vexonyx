@@ -18,8 +18,9 @@ export const metadata: Metadata = {
   publisher: SITE_NAME,
   category: "technology",
   icons: {
-    icon: [{ url: "/favicon.ico", sizes: "any" }],
-    shortcut: "/favicon.ico",
+    icon: [{ url: "/icon.png", type: "image/png", sizes: "192x192" }],
+    shortcut: "/icon.png",
+    apple: [{ url: "/apple-icon.png", type: "image/png", sizes: "180x180" }],
   },
   manifest: "/manifest.webmanifest",
   robots: {
