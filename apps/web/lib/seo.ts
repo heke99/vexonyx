@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const SITE_NAME = "VEXONYX";
-export const SITE_URL = "https://vexonyx.com";
+export const SITE_URL = "https://www.vexonyx.com";
 export const DEFAULT_DESCRIPTION =
   "AI platform for authorized penetration testing, web and API security, cloud and code review, evidence, security tool building and technical reporting.";
 

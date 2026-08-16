@@ -38,9 +38,16 @@ test("primary marketing pages have unique canonical metadata", () => {
   const agents = read("../app/agents/page.tsx");
   const useCases = read("../app/use-cases/page.tsx");
 
+  assert.match(seo, /SITE_URL = \"https:\/\/www\.vexonyx\.com\"/);
   assert.match(seo, /alternates:\s*\{ canonical \}/);
   assert.match(home, /createPageMetadata/);
   assert.match(product, /AI Pentesting Platform/);
   assert.match(agents, /AI Security Agents/);
   assert.match(useCases, /AI Cybersecurity Use Cases/);
+});
+
+test("application redirects do not fight the Vercel apex-to-www canonical redirect", () => {
+  const nextConfig = read("../next.config.ts");
+  assert.doesNotMatch(nextConfig, /has:\s*\[\{ type: \"host\", value: \"www\.vexonyx\.com\"/);
+  assert.doesNotMatch(nextConfig, /destination: \"https:\/\/vexonyx\.com/);
 });

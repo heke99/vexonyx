@@ -1,6 +1,6 @@
 # VEXONYX
 
-**Official website:** https://vexonyx.com
+**Official website:** https://www.vexonyx.com
 
 VEXONYX is a production-first, multi-tenant, AI-native security workspace for professional and authorized security work.
 
