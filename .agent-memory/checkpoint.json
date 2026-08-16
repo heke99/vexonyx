@@ -3,15 +3,19 @@
   "date": "2026-08-16",
   "branch": "agent/brand-seo-20260816",
   "phase": "brand-and-seo",
-  "status": "IMPLEMENTED_NOT_VERIFIED",
+  "status": "IN_PROGRESS_AFTER_ICON_BUILD_FIX",
   "baseMainCommit": "cc5a38087a71103a1eaede99c30d725e3f471010",
+  "pr": 35,
   "verified": [
     "main branch already contains the previously pending commerce/legal work through PR #34",
-    "approved user-supplied logo was converted into a multi-size favicon and Apple touch icon locally before repository integration",
-    "current public web code had no sitemap, robots metadata route, manifest or JSON-LD before this task"
+    "approved user-supplied logo was converted into square PNG browser/search and Apple touch assets",
+    "lint passed on the first PR 35 CI attempt",
+    "typecheck passed on the first PR 35 CI attempt",
+    "all Node tests passed including SEO regressions on the first PR 35 CI attempt",
+    "isolated parser smoke tests passed on the first PR 35 CI attempt"
   ],
   "implemented": [
-    "brand favicon and Apple touch icon",
+    "brand icon and Apple touch icon",
     "canonical SEO helper and primary-page metadata",
     "Open Graph and Twitter metadata with social image route",
     "robots and sitemap metadata routes",
@@ -24,13 +28,13 @@
     "Google and Bing verification placeholders",
     "SEO regression tests"
   ],
+  "knownFailure": "The first PR 35 build failed because Next/Turbopack could not decode the generated multi-size ICO. The ICO was removed and replaced by the exact approved square PNG as app/icon.png.",
   "next": [
-    "commit complete brand/SEO tree",
-    "open pull request",
-    "pass lint, typecheck, tests and production build",
+    "push PNG icon correction",
+    "pass rerun lint, typecheck, tests and production build",
     "verify Vercel preview routes and metadata",
     "merge only if green",
-    "verify production favicon, robots, sitemap, manifest, canonical redirect and metadata"
+    "verify production icon, robots, sitemap, manifest, canonical redirect and metadata"
   ],
   "externalGates": [
     "Google Search Console ownership/submission requires the user's Google account or verification token",
