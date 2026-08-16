@@ -1,31 +1,23 @@
 import { getWorkspace } from "@/lib/workspace";
-
-function budget(value: unknown) {
-  return value == null ? "Not set" : Number(value).toFixed(2);
-}
+import { updateOrganizationSettings, updatePersonalSettings, updateSafetyBudgets } from "./actions";
 
 export default async function Page() {
   const ws = await getWorkspace();
   if (!ws?.organizationId) return <div className="app-content"><div className="empty-state"><b>Create an organization first.</b></div></div>;
-
-  const [organization, quotas] = await Promise.all([
+  const isAdmin=["organization_owner","organization_admin"].includes(String(ws.role));
+  const [organization, quotas, profile] = await Promise.all([
     ws.supabase.schema("app").from("organizations").select("id,name,slug,status,created_at,updated_at").eq("id", ws.organizationId).maybeSingle(),
     ws.supabase.schema("billing").from("quotas").select("monthly_budget,agent_budget,generation_budget,sandbox_budget,hard_cap_enabled,updated_at").eq("organization_id", ws.organizationId).maybeSingle(),
+    ws.supabase.schema("app").from("profiles").select("display_name,timezone").eq("id",ws.userId).maybeSingle(),
   ]);
 
   return <div className="app-content">
-    <div className="app-heading"><div><h1>Settings</h1><p>Organization access, safety limits and data controls in one place.</p></div></div>
+    <div className="app-heading"><div><h1>Settings</h1><p>Manage your profile, organization identity and safety budgets. Changes are stored server-side and scoped to this workspace.</p></div></div>
     <section className="workspace-grid">
-      <article className="workspace-card"><header><h2>Organization</h2><span>{ws.role?.replaceAll("organization_", "").replaceAll("_", " ")}</span></header>
-        {organization.error ? <div className="empty-state"><b>Organization details could not be loaded.</b></div> : <><div className="project-row"><div><b>Name</b><small>Shown across the workspace</small></div><span>{organization.data?.name ?? "—"}</span></div><div className="project-row"><div><b>Status</b><small>Current organization access state</small></div><span>{organization.data?.status ?? "—"}</span></div><div className="project-row"><div><b>Workspace ID</b><small>Stable reference for support and API use</small></div><span>{organization.data?.slug ?? "—"}</span></div></>}
-      </article>
-      <article className="workspace-card"><header><h2>Safety budgets</h2><span>{quotas.data?.hard_cap_enabled ? "Hard caps enabled" : "Hard caps not enabled"}</span></header>
-        <div className="project-row"><div><b>Monthly budget</b><small>Maximum tracked spend for the organization</small></div><span>{budget(quotas.data?.monthly_budget)}</span></div>
-        <div className="project-row"><div><b>Agent run budget</b><small>Limit applied to a single agent run</small></div><span>{budget(quotas.data?.agent_budget)}</span></div>
-        <div className="project-row"><div><b>AI generation budget</b><small>Limit for a single generation</small></div><span>{budget(quotas.data?.generation_budget)}</span></div>
-        <div className="project-row"><div><b>External execution budget</b><small>Limit for future isolated execution</small></div><span>{budget(quotas.data?.sandbox_budget)}</span></div>
-      </article>
+      <article className="workspace-card"><header><h2>Your profile</h2><span>Personal</span></header><form className="auth-form" action={updatePersonalSettings} style={{marginTop:16}}><label>Display name<input name="display_name" required maxLength={120} defaultValue={profile.data?.display_name??""}/></label><label>Timezone<input name="timezone" required maxLength={80} defaultValue={profile.data?.timezone??"UTC"} placeholder="Europe/Stockholm"/></label><button className="button" type="submit">Save profile</button></form></article>
+      <article className="workspace-card"><header><h2>Organization</h2><span>{ws.role?.replaceAll("organization_", "").replaceAll("_", " ")}</span></header>{organization.error?<div className="empty-state"><b>Organization details could not be loaded.</b></div>:isAdmin?<form className="auth-form" action={updateOrganizationSettings} style={{marginTop:16}}><label>Organization name<input name="name" required minLength={2} maxLength={120} defaultValue={organization.data?.name??""}/></label><label>Workspace ID<input readOnly value={organization.data?.slug??""}/></label><label>Status<input readOnly value={organization.data?.status??""}/></label><button className="button" type="submit">Save organization</button></form>:<><div className="project-row"><div><b>Name</b><small>Shown across the workspace</small></div><span>{organization.data?.name??"—"}</span></div><div className="project-row"><div><b>Workspace ID</b><small>Stable support reference</small></div><span>{organization.data?.slug??"—"}</span></div></>}</article>
     </section>
-    <section className="workspace-card"><header><h2>Data controls</h2><span>Private beta</span></header><div className="empty-state"><div><b>Export, deletion and retention controls are prepared for beta rollout.</b><p>Project files and sensitive evidence remain private by default. Destructive account-level actions are not exposed until the recovery path is fully verified.</p></div></div></section>
+    <section className="workspace-card"><header><h2>Safety budgets</h2><span>{quotas.data?.hard_cap_enabled?"Hard caps enabled":"Hard caps not enabled"}</span></header>{isAdmin?<form className="auth-form" action={updateSafetyBudgets} style={{marginTop:16}}><label>Monthly budget<input name="monthly_budget" type="number" min="0" step="0.01" defaultValue={quotas.data?.monthly_budget??""} placeholder="No limit"/></label><label>Agent run budget<input name="agent_budget" type="number" min="0" step="0.01" defaultValue={quotas.data?.agent_budget??""} placeholder="No limit"/></label><label>AI generation budget<input name="generation_budget" type="number" min="0" step="0.01" defaultValue={quotas.data?.generation_budget??""} placeholder="No limit"/></label><label>External execution budget<input name="sandbox_budget" type="number" min="0" step="0.01" defaultValue={quotas.data?.sandbox_budget??""} placeholder="No limit"/></label><label>Enforcement<select name="hard_cap_enabled" defaultValue={quotas.data?.hard_cap_enabled?"true":"false"}><option value="false">Track only</option><option value="true">Enforce hard caps</option></select></label><button className="button" type="submit">Save safety budgets</button></form>:<div className="empty-state"><div><b>Only organization admins can change budget limits.</b><p>Your current limits still apply to your usage.</p></div></div>}</section>
+    <section className="workspace-card"><header><h2>Data controls</h2><span>Protected</span></header><div className="project-row"><div><b>Project deletion</b><small>Soft-delete, restore and permanent purge are available from Projects with owner/admin enforcement.</small></div><span>Available</span></div><div className="project-row"><div><b>Report exports</b><small>PDF and DOCX use immutable snapshots and queued rendering.</small></div><span>Available</span></div><div className="project-row"><div><b>Account deletion</b><small>Account-level destructive deletion stays unavailable until identity recovery and billing teardown are verified end-to-end.</small></div><span>Protected</span></div></section>
   </div>;
 }

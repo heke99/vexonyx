@@ -38,7 +38,10 @@ export function CustomerAppShell({ children, readOnly = false, preview, displayN
           <span className={styles.navLabel}>ACCOUNT</span>
           {accountItems.map(([href,label,icon]) => <NavItem key={href} href={href} label={label} icon={icon} readOnly={readOnly} />)}
         </nav>
-        <div className={styles.sidebarFooter}><b>{displayName}</b><span>{readOnly ? "Read-only customer preview" : "Personal security workspace"}</span></div>
+        <div className={styles.sidebarFooter}>
+          <b>{displayName}</b><span>{readOnly ? "Read-only customer preview" : "Personal security workspace"}</span>
+          {!readOnly ? <form action="/auth/signout" method="post"><button className={styles.signOut} type="submit">Sign out</button></form> : null}
+        </div>
       </aside>
       <main className={styles.main}>
         <header className={styles.topbar}>
