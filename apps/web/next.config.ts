@@ -27,7 +27,7 @@ if (process.env.VERCEL_ENV === "production") {
   }
 }
 
-const waitlistRedirects = ["/login", "/signup", "/sign-up", "/register", "/create-account"];
+const publicSignupRedirects = ["/signup", "/sign-up", "/register", "/create-account"];
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
@@ -36,11 +36,7 @@ const nextConfig: NextConfig = {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
   async redirects() {
-    return [
-      ...waitlistRedirects.map((source) => ({ source, destination: "/waitlist", permanent: false })),
-      { source: "/invite/:path*", destination: "/waitlist", permanent: false },
-      { source: "/auth/:path*", destination: "/waitlist", permanent: false },
-    ];
+    return publicSignupRedirects.map((source) => ({ source, destination: "/waitlist", permanent: false }));
   },
 };
 
