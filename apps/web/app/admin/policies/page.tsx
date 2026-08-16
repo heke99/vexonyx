@@ -3,6 +3,13 @@ import { assignPolicyVersion,createPolicy,setPolicyEnabled } from "../ai-control
 
 export const dynamic = "force-dynamic";
 
+type PolicySimulation = {
+  allowed:boolean;
+  final_action:string;
+  requires_approval:boolean;
+  matched_rules:unknown;
+};
+
 export default async function PolicyCenterPage({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}) {
   const { admin } = await requireSuperadmin();
   const search = await searchParams;
@@ -26,7 +33,7 @@ export default async function PolicyCenterPage({searchParams}:{searchParams:Prom
   const activeVersionFor = (setId:string) => versions.find((v) => v.policy_set_id===setId && v.status==="active");
 
   const simRun = simRunId ? runs.find((run)=>run.id===simRunId) : null;
-  let simulation:null|{allowed:boolean;final_action:string;requires_approval:boolean;matched_rules:unknown} = null;
+  let simulation:PolicySimulation|null = null;
   let simulationError = "";
   if (simRun) {
     const result = await admin.schema("policies").rpc("evaluate_action",{
@@ -37,7 +44,7 @@ export default async function PolicyCenterPage({searchParams}:{searchParams:Prom
       p_resource:simResource,
     }).maybeSingle();
     if (result.error) simulationError = result.error.message;
-    else simulation = result.data as typeof simulation;
+    else if (result.data) simulation = result.data as PolicySimulation;
   }
 
   return <div className="admin-page">
