@@ -2,34 +2,30 @@
 
 Integrate the approved VEXONYX brand mark across the web product and complete the first production SEO/discovery hardening pass.
 
-Status: IN_PROGRESS
+Status: VERIFIED
 
-Implemented on `agent/brand-seo-20260816`:
+Implemented and verified in production on 2026-08-16:
 
-- exact VEXONYX square brand mark prepared from the approved logo for browser/search/app surfaces;
-- Apple touch icon for branded saved-site/mobile surfaces;
-- canonical `https://vexonyx.com` SEO helper and unique canonical metadata for primary marketing pages;
-- richer Open Graph/Twitter metadata and generated social preview image;
-- `robots.txt`, `sitemap.xml` and web manifest metadata routes;
-- Organization + WebSite JSON-LD on the homepage;
-- noindex/noarchive metadata for authenticated workspace and Superadmin surfaces;
-- permanent `www.vexonyx.com` to apex canonical redirect;
-- stronger crawlable footer internal links;
-- official website backlink from the public GitHub README;
-- optional Google/Bing ownership-verification environment variables;
-- SEO regression tests.
+- approved VEXONYX square brand mark is live as the browser/search/app icon at `/icon.png`;
+- Apple touch icon is live at `/apple-icon.png`;
+- primary marketing pages have unique titles, descriptions and canonical metadata;
+- canonical public origin is `https://www.vexonyx.com`, matching Vercel's permanent apex → www redirect;
+- Open Graph/Twitter metadata and generated 1200×630 social preview are live;
+- `/robots.txt`, `/sitemap.xml` and `/manifest.webmanifest` are live and return 200;
+- Organization + WebSite JSON-LD is present on the homepage;
+- authenticated workspace and Superadmin surfaces are explicitly noindex/noarchive;
+- crawlable footer internal links cover product, use cases, security, pricing, legal and contact;
+- the public GitHub README links back to the canonical VEXONYX website;
+- optional Google/Bing site-verification environment variables are supported;
+- SEO regression tests cover public discovery, private noindex, canonical metadata and redirect-loop prevention.
 
-Verification checkpoint:
+Verification evidence:
 
-- lint: VERIFIED on first PR #35 CI attempt;
-- typecheck: VERIFIED on first PR #35 CI attempt;
-- Node tests: VERIFIED, including the SEO regression suite;
-- isolated parser smoke: VERIFIED;
-- first production build: FAILED only because Next/Turbopack rejected the generated multi-size ICO decoder format;
-- corrective action: remove the ICO and use the exact approved square mark as Next App Router `icon.png` instead. This keeps a standard square PNG favicon/search icon while avoiding the decoder incompatibility.
+- PR #35: lint, typecheck, Node tests, isolated-parser smoke tests, production build and clean Supabase migration replay/db lint/pgTAP passed after replacing the incompatible generated ICO with the approved PNG icon;
+- PR #36: all CI jobs passed and fixed the production canonical-host redirect conflict discovered during live verification;
+- production Vercel deployment `dpl_BXsgLzhu2nsYvCpR1Ny9oQ85uBQo` reached READY on main commit `ea5ecf7ef4cb51491241d9ea39609693bfa61572`;
+- live apex `https://vexonyx.com/` returns a permanent redirect to `https://www.vexonyx.com/`;
+- live `https://www.vexonyx.com/` returns 200 with the expected canonical URL, icon metadata, robots directives, Open Graph/Twitter metadata and JSON-LD;
+- live robots, sitemap, manifest and icon endpoints return 200.
 
-The previous tax/checkout work recorded here was completed and subsequently superseded by merged main-branch work through PR #34 before this task began.
-
-Exact next action: push the PNG icon correction, rerun PR #35 CI, verify the Vercel preview, merge only if green, then verify production `/icon.png`, `/apple-icon.png`, `/robots.txt`, `/sitemap.xml`, `/manifest.webmanifest`, canonical redirect and homepage metadata.
-
-External follow-up after production verification: add the production domain to Google Search Console/Bing Webmaster Tools, store their public verification tokens in Vercel if required, submit `https://vexonyx.com/sitemap.xml`, and pursue only relevant earned/editorial backlinks rather than link-scheme or bulk-link tactics.
+External follow-up only: verify the production domain in Google Search Console and Bing Webmaster Tools using the account-owned verification tokens, submit `https://www.vexonyx.com/sitemap.xml`, and build relevant earned/editorial backlinks. Do not use bulk, fake, paid-link-scheme or automated spam backlinks.
