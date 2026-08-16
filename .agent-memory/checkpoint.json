@@ -1,44 +1,43 @@
 {
   "project": "VEXONYX",
   "date": "2026-08-16",
-  "branch": "agent/brand-seo-20260816",
+  "branch": "main",
   "phase": "brand-and-seo",
-  "status": "IN_PROGRESS_AFTER_ICON_BUILD_FIX",
-  "baseMainCommit": "cc5a38087a71103a1eaede99c30d725e3f471010",
-  "pr": 35,
+  "status": "VERIFIED",
+  "productionCommit": "ea5ecf7ef4cb51491241d9ea39609693bfa61572",
+  "productionDeployment": "dpl_BXsgLzhu2nsYvCpR1Ny9oQ85uBQo",
+  "pullRequests": [35, 36],
   "verified": [
-    "main branch already contains the previously pending commerce/legal work through PR #34",
-    "approved user-supplied logo was converted into square PNG browser/search and Apple touch assets",
-    "lint passed on the first PR 35 CI attempt",
-    "typecheck passed on the first PR 35 CI attempt",
-    "all Node tests passed including SEO regressions on the first PR 35 CI attempt",
-    "isolated parser smoke tests passed on the first PR 35 CI attempt"
+    "approved PNG brand icon is live at /icon.png",
+    "Apple touch icon is live at /apple-icon.png",
+    "homepage returns 200 on https://www.vexonyx.com with canonical metadata, Open Graph/Twitter metadata and Organization/WebSite JSON-LD",
+    "apex https://vexonyx.com permanently redirects to the canonical www host without a redirect loop",
+    "robots.txt returns 200 and excludes private/admin/API surfaces while advertising the canonical sitemap",
+    "sitemap.xml returns 200 and lists the intended public marketing/legal routes on the canonical www host",
+    "manifest.webmanifest returns 200 and references the VEXONYX brand assets",
+    "PR 35 final CI passed lint, typecheck, tests, isolated parser smoke, production build and clean migration replay/db lint/pgTAP",
+    "PR 36 CI passed lint, typecheck, tests, production build and clean migration replay/db lint/pgTAP",
+    "Vercel production deployment reached READY"
   ],
   "implemented": [
-    "brand icon and Apple touch icon",
+    "brand browser/search/app icon",
+    "Apple touch icon",
     "canonical SEO helper and primary-page metadata",
     "Open Graph and Twitter metadata with social image route",
     "robots and sitemap metadata routes",
     "web app manifest",
     "homepage Organization and WebSite JSON-LD",
     "private workspace and Superadmin noindex metadata",
-    "www-to-apex permanent redirect",
+    "canonical apex-to-www alignment",
     "crawlable footer navigation",
     "official-site backlink from public GitHub README",
     "Google and Bing verification placeholders",
-    "SEO regression tests"
+    "SEO and redirect-loop regression tests"
   ],
-  "knownFailure": "The first PR 35 build failed because Next/Turbopack could not decode the generated multi-size ICO. The ICO was removed and replaced by the exact approved square PNG as app/icon.png.",
-  "next": [
-    "push PNG icon correction",
-    "pass rerun lint, typecheck, tests and production build",
-    "verify Vercel preview routes and metadata",
-    "merge only if green",
-    "verify production icon, robots, sitemap, manifest, canonical redirect and metadata"
-  ],
-  "externalGates": [
-    "Google Search Console ownership/submission requires the user's Google account or verification token",
-    "Bing Webmaster Tools ownership/submission requires the user's Microsoft account or verification token",
-    "external backlinks must be earned or placed on relevant controlled profiles/publications; do not create link-spam schemes"
+  "externalNext": [
+    "verify https://www.vexonyx.com in Google Search Console using the account-owned verification token",
+    "verify the site in Bing Webmaster Tools if desired",
+    "submit https://www.vexonyx.com/sitemap.xml",
+    "pursue relevant earned/editorial backlinks and avoid link schemes"
   ]
 }
