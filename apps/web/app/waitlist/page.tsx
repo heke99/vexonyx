@@ -5,7 +5,7 @@ import { WaitlistForm } from "@/components/waitlist-form";
 const audience = [
   ["Independent", "Researchers, students, developers and security professionals can join directly."],
   ["Teams", "Security teams, consultancies, startups and larger organizations can register too."],
-  ["Waitlist only", "No VEXONYX account is created at this stage. Login, signup and team invitations stay closed until access opens."],
+  ["Waitlist only", "Joining the waitlist does not create a VEXONYX account. Public signup remains closed; existing beta customers and explicitly invited team members can sign in."],
 ] as const;
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ ref?: string }> }) {
