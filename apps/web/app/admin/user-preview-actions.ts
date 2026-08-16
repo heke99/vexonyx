@@ -4,7 +4,7 @@ import { randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { requireSuperadmin } from "@/lib/admin/guard";
-import { ADMIN_PREVIEW_COOKIE, ADMIN_PREVIEW_TTL_MINUTES, hashPreviewToken } from "@/lib/admin/impersonation";
+import { ADMIN_PREVIEW_COOKIE, ADMIN_PREVIEW_COOKIE_PATH, ADMIN_PREVIEW_TTL_MINUTES, hashPreviewToken } from "@/lib/admin/impersonation";
 
 const DEMO_EMAIL = "demo@vexonyx.com";
 const DEMO_APP_METADATA = { vexonyx_internal_provisioning: "demo" } as const;
@@ -97,9 +97,9 @@ export async function startUserPreview(formData: FormData) {
   if (inserted.error) throw inserted.error;
 
   const cookieStore = await cookies();
-  cookieStore.set(ADMIN_PREVIEW_COOKIE, rawToken, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/admin", maxAge: ADMIN_PREVIEW_TTL_MINUTES * 60 });
+  cookieStore.set(ADMIN_PREVIEW_COOKIE, rawToken, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: ADMIN_PREVIEW_COOKIE_PATH, maxAge: ADMIN_PREVIEW_TTL_MINUTES * 60 });
   await audit(admin, actorUserId, "user_preview.started", targetUserId, { session_id: inserted.data.id, expires_at: expiresAt, reason }, membership.data.organization_id);
-  redirect(`/admin/users/${targetUserId}/preview`);
+  redirect(`/preview/users/${targetUserId}`);
 }
 
 export async function stopUserPreview(formData: FormData) {
@@ -115,6 +115,6 @@ export async function stopUserPreview(formData: FormData) {
       await audit(admin, actorUserId, "user_preview.ended", session.target_user_id, { session_id: session.id }, session.organization_id);
     }
   }
-  cookieStore.delete(ADMIN_PREVIEW_COOKIE);
+  cookieStore.set(ADMIN_PREVIEW_COOKIE, "", { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: ADMIN_PREVIEW_COOKIE_PATH, maxAge: 0 });
   redirect(targetUserId ? `/admin/users/${targetUserId}` : "/admin/users");
 }

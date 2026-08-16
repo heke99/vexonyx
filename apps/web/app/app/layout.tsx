@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { AppSidebar } from "@/components/app-sidebar";
+import { CustomerAppShell } from "@/components/customer-app-shell";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +11,9 @@ export const metadata: Metadata = {
 export default async function WorkspaceLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
-  if (!data?.claims?.sub) redirect("/login");
-  return <div className="app-shell"><AppSidebar /><main className="app-main"><header className="app-topbar"><span>Authorized security workspace</span><span>External actions off until explicitly enabled</span></header>{children}</main></div>;
+  const userId = data?.claims?.sub;
+  if (!userId) redirect("/login");
+
+  const { data: profile } = await supabase.schema("app").from("profiles").select("display_name").eq("id", userId).maybeSingle();
+  return <CustomerAppShell displayName={String(profile?.display_name || "VEXONYX user")}>{children}</CustomerAppShell>;
 }

@@ -28,7 +28,7 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (path.startsWith("/admin") || path === "/admin-login" || path === "/admin-confirm") {
+  if (path.startsWith("/admin") || path === "/admin-login" || path === "/admin-confirm" || path.startsWith("/preview")) {
     const url = new URL(`https://${ADMIN_HOST}${path}`);
     url.search = request.nextUrl.search;
     return NextResponse.redirect(url);
@@ -46,5 +46,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/admin/:path*", "/admin-login", "/admin-confirm", "/app/:path*", "/login", "/signup", "/auth/:path*", "/invite/:path*"],
+  matcher: ["/", "/admin/:path*", "/admin-login", "/admin-confirm", "/preview/:path*", "/app/:path*", "/login", "/signup", "/auth/:path*", "/invite/:path*"],
 };
