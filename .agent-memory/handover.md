@@ -1,15 +1,25 @@
 # Handover
 
-Current branch: `agent/tax-ready-commerce-20260815`, PR #29.
+The VEXONYX pre-GPU AI control-plane implementation is PR #37 from `agent/ai-policy-control-plane-20260816` into `main`.
 
-Do not recreate the V1 Stripe catalog. The live subscriptions and credit packs already exist and the production Supabase catalog is provider-synced. Stripe Tax is active as infrastructure with the verified Diversa Solutions LLC head office in Sheridan, Wyoming and default tax behavior `exclusive`.
+Do not recreate the existing Agent Runtime, model registry, security engagements, authorization/scope checks, sandbox jobs, operations kill switches or billing/usage foundation. This work extends those systems with the approved Policy/Agent/Tool/Learning structure.
 
-Stripe currently reports zero active tax registrations. Therefore `billing.tax_settings.automatic_collection_enabled` must remain false. No code path creates registrations automatically. A Stripe registration should only be recorded after the business has actually registered with the relevant tax authority.
+Production Supabase already contains migrations:
 
-The canonical Stripe candidate for VEXONYX subscriptions is `txcd_10105002` (AIaaS, cloud-based, business use), but the live products intentionally do not have a confirmed Product tax code yet. Plans remain `pending_confirmation`. Credit packs remain `prepaid_usage_review` because the tax point/treatment of restricted prepaid usage requires separate confirmation.
+- `20260816115605_ai_policy_agent_control_plane`
+- `20260816120040_ai_model_catalog_and_internal_deny`
+- `20260816120604_ai_policy_control_plane_fk_indexes`
 
-Production database migration head is `20260815183221_usage_rls_initplan_optimization`, after `20260815182411_tax_ready_commerce` and `20260815182858_tax_candidate_defaults`. Checkout collects tax IDs and customer name/address. Automatic tax is added only after a confirmed tax code, an enabled local collection flag and a fresh live Stripe registration check. Webhooks persist authoritative subtotal/tax/total/location/tax identity snapshots. Superadmin controls live at `/admin/tax` and are fail-closed.
+The product now has a versioned Policy Engine, agent profiles, tool capability assignments, model preferences/entitlements, user routing modes, memory trust metadata, controlled-learning candidates, evaluations and rollout metadata. Superadmin has AI Control Center, Policy Center/Simulator, Agent Profiles, Tools and Model Router. Users can choose an agent and VEXONYX Auto/Fast/Pro/Deep; a specific alias appears only when it is enabled and explicitly entitled.
 
-Exact next action: obtain a fully green PR #29 run including app build and clean Supabase migration replay/db lint/pgTAP, merge only then, and verify the resulting Vercel production deployment plus `/ready`.
+Critical security invariant: editable policy is not the outer security boundary. `operations.tool_preflight` still checks incident/system state, kill switches, project/run/engagement binding, authorization/target scope, network state, tool state and approval. Policy evaluation is layered after these hard checks and cannot expand an unauthorized or out-of-scope operation. Cross-tenant agent-profile references are rejected at the database boundary.
 
-Do not claim checkout is live: Vercel still needs `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`, and Stripe currently has no webhook endpoint. Do not create the endpoint unless its generated signing secret can be stored in Vercel immediately. GPU/model/tool execution remains intentionally disabled pending the separate 4× H200 rollout.
+Critical pre-GPU invariant: do not enable private model inference, external tools, sandbox scheduling or external network just because UI/control tables now exist. Live verification before merge showed 0 enabled models and 0 enabled tool definitions, with external tools, sandbox scheduling and external network all OFF.
+
+Learning is candidate-only. Production runs must never directly rewrite global memory, prompts, routing, policies or model weights. Promotion requires evaluated evidence and then shadow/canary/rollback control.
+
+CI evidence before the memory checkpoint: migration replay passed clean reset/lint/pgTAP; app lint/typecheck/tests/parser smoke/production build passed after two targeted TypeScript fixes. Re-run CI on this checkpoint commit before merge.
+
+Supabase Advisor has no new AI/policy missing-FK-index warnings. Two existing security warnings remain outside this work: `pg_net` installed in public and leaked-password protection disabled. Older service-only RLS-with-no-policy INFO notices also remain; do not broaden client access merely to silence INFO messages.
+
+Exact delivery action: obtain green CI for this checkpoint commit, merge PR #37, then verify the new Vercel production deployment (`vexonyx`, Div3rsa team), `/ready`/public reachability and production runtime errors. If deployment verification is green, the next engineering milestone is provider/GPU readiness behind the already-built model/router interface—not another product/control-plane rewrite.

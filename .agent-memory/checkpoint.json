@@ -1,43 +1,43 @@
 {
   "project": "VEXONYX",
   "date": "2026-08-16",
-  "branch": "main",
-  "phase": "brand-and-seo",
-  "status": "VERIFIED",
-  "productionCommit": "ea5ecf7ef4cb51491241d9ea39609693bfa61572",
-  "productionDeployment": "dpl_BXsgLzhu2nsYvCpR1Ny9oQ85uBQo",
-  "pullRequests": [35, 36],
+  "branch": "agent/ai-policy-control-plane-20260816",
+  "phase": "pre-gpu-ai-control-plane",
+  "status": "IMPLEMENTED_FINAL_CI",
+  "pullRequest": 37,
+  "supabaseProject": "trwwicnqnudllbeldsib",
+  "migrationHead": "20260816120604_ai_policy_control_plane_fk_indexes",
+  "migrations": [
+    "20260816115605_ai_policy_agent_control_plane",
+    "20260816120040_ai_model_catalog_and_internal_deny",
+    "20260816120604_ai_policy_control_plane_fk_indexes"
+  ],
   "verified": [
-    "approved PNG brand icon is live at /icon.png",
-    "Apple touch icon is live at /apple-icon.png",
-    "homepage returns 200 on https://www.vexonyx.com with canonical metadata, Open Graph/Twitter metadata and Organization/WebSite JSON-LD",
-    "apex https://vexonyx.com permanently redirects to the canonical www host without a redirect loop",
-    "robots.txt returns 200 and excludes private/admin/API surfaces while advertising the canonical sitemap",
-    "sitemap.xml returns 200 and lists the intended public marketing/legal routes on the canonical www host",
-    "manifest.webmanifest returns 200 and references the VEXONYX brand assets",
-    "PR 35 final CI passed lint, typecheck, tests, isolated parser smoke, production build and clean migration replay/db lint/pgTAP",
-    "PR 36 CI passed lint, typecheck, tests, production build and clean migration replay/db lint/pgTAP",
-    "Vercel production deployment reached READY"
+    "live Supabase migrations applied",
+    "migration filenames match production migration history",
+    "policy hierarchy and server-side model catalog regression tested",
+    "cross-tenant agent-profile binding denied at database boundary",
+    "new control-plane foreign keys have covering indexes",
+    "Supabase advisor shows no new AI/policy unindexed foreign keys",
+    "clean migration replay passed db reset, database lint and pgTAP",
+    "app lint passed",
+    "app typecheck passed after targeted fixes",
+    "Node test suite passed",
+    "isolated parser safety smoke passed",
+    "production build passed",
+    "live pre-GPU state remains fail-closed"
   ],
-  "implemented": [
-    "brand browser/search/app icon",
-    "Apple touch icon",
-    "canonical SEO helper and primary-page metadata",
-    "Open Graph and Twitter metadata with social image route",
-    "robots and sitemap metadata routes",
-    "web app manifest",
-    "homepage Organization and WebSite JSON-LD",
-    "private workspace and Superadmin noindex metadata",
-    "canonical apex-to-www alignment",
-    "crawlable footer navigation",
-    "official-site backlink from public GitHub README",
-    "Google and Bing verification placeholders",
-    "SEO and redirect-loop regression tests"
-  ],
-  "externalNext": [
-    "verify https://www.vexonyx.com in Google Search Console using the account-owned verification token",
-    "verify the site in Bing Webmaster Tools if desired",
-    "submit https://www.vexonyx.com/sitemap.xml",
-    "pursue relevant earned/editorial backlinks and avoid link schemes"
+  "failClosed": {
+    "modelsEnabled": 0,
+    "toolsEnabled": 0,
+    "externalToolsEnabled": false,
+    "sandboxSchedulingEnabled": false,
+    "externalNetworkEnabled": false
+  },
+  "next": [
+    "complete CI on this memory/checkpoint commit",
+    "merge PR 37 to main",
+    "verify the resulting Vercel production deployment and runtime errors",
+    "keep GPU/model/tool/network execution disabled until their separate infrastructure readiness gates are verified"
   ]
 }

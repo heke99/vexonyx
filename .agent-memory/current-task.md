@@ -1,31 +1,32 @@
 # Current task
 
-Integrate the approved VEXONYX brand mark across the web product and complete the first production SEO/discovery hardening pass.
+Build and verify the VEXONYX pre-GPU AI policy, agent, tool and model control-plane structure defined in the approved master specification.
 
-Status: VERIFIED
+Status: IMPLEMENTED / FINAL DELIVERY VERIFICATION
 
-Implemented and verified in production on 2026-08-16:
+Implemented on `agent/ai-policy-control-plane-20260816`, PR #37:
 
-- approved VEXONYX square brand mark is live as the browser/search/app icon at `/icon.png`;
-- Apple touch icon is live at `/apple-icon.png`;
-- primary marketing pages have unique titles, descriptions and canonical metadata;
-- canonical public origin is `https://www.vexonyx.com`, matching Vercel's permanent apex → www redirect;
-- Open Graph/Twitter metadata and generated 1200×630 social preview are live;
-- `/robots.txt`, `/sitemap.xml` and `/manifest.webmanifest` are live and return 200;
-- Organization + WebSite JSON-LD is present on the homepage;
-- authenticated workspace and Superadmin surfaces are explicitly noindex/noarchive;
-- crawlable footer internal links cover product, use cases, security, pricing, legal and contact;
-- the public GitHub README links back to the canonical VEXONYX website;
-- optional Google/Bing site-verification environment variables are supported;
-- SEO regression tests cover public discovery, private noindex, canonical metadata and redirect-loop prevention.
+- versioned structured Policy Engine and assignment hierarchy;
+- immutable platform enforcement kept below Superadmin-editable policies;
+- Superadmin AI Control Center, Policy Center, Policy Simulator, Agent Profiles, Tools and Model Router;
+- versioned agent profiles with model/tool preferences and rollback-ready versions;
+- user agent selection plus VEXONYX Auto/Fast/Pro/Deep and gated specific-model selection;
+- server-side model entitlement and agent-profile validation;
+- memory trust/sensitivity/instruction-authority metadata;
+- controlled learning candidates, evals and canary/rollback metadata;
+- engagement network/technique metadata;
+- policy-aware tool preflight layered after authorization/scope and other immutable checks;
+- pgtap coverage and foreign-key index coverage.
 
-Verification evidence:
+Production Supabase migration head for this work is `20260816120604_ai_policy_control_plane_fk_indexes` after `20260816115605_ai_policy_agent_control_plane` and `20260816120040_ai_model_catalog_and_internal_deny`.
 
-- PR #35: lint, typecheck, Node tests, isolated-parser smoke tests, production build and clean Supabase migration replay/db lint/pgTAP passed after replacing the incompatible generated ICO with the approved PNG icon;
-- PR #36: all CI jobs passed and fixed the production canonical-host redirect conflict discovered during live verification;
-- production Vercel deployment `dpl_BXsgLzhu2nsYvCpR1Ny9oQ85uBQo` reached READY on main commit `ea5ecf7ef4cb51491241d9ea39609693bfa61572`;
-- live apex `https://vexonyx.com/` returns a permanent redirect to `https://www.vexonyx.com/`;
-- live `https://www.vexonyx.com/` returns 200 with the expected canonical URL, icon metadata, robots directives, Open Graph/Twitter metadata and JSON-LD;
-- live robots, sitemap, manifest and icon endpoints return 200.
+Verification completed before final merge:
 
-External follow-up only: verify the production domain in Google Search Console and Bing Webmaster Tools using the account-owned verification tokens, submit `https://www.vexonyx.com/sitemap.xml`, and build relevant earned/editorial backlinks. Do not use bulk, fake, paid-link-scheme or automated spam backlinks.
+- migrations applied successfully to live VEXONYX Supabase;
+- live state confirms 0 enabled models, 0 enabled tools, external tools OFF, sandbox scheduling OFF and external network OFF;
+- Supabase performance advisor has no new unindexed FK findings from this work;
+- Supabase security advisor has no new AI/policy warnings from this work;
+- clean CI migration replay passed db reset, database lint and pgTAP;
+- corrected app head passed lint, typecheck, Node tests, isolated parser smoke tests and production build.
+
+Exact remaining delivery action: obtain green CI on the memory/checkpoint commit, merge PR #37 to `main`, then verify the resulting Vercel production deployment and runtime health. Do not turn on GPU/model inference, external tools, sandbox scheduling or external network during deployment verification.
