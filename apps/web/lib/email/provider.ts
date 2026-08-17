@@ -2,16 +2,20 @@ import "server-only";
 import {
   adminVerificationCodeTemplate,
   organizationInvitationTemplate,
+  waitlistAccessInvitationTemplate,
   waitlistConfirmedTemplate,
   waitlistVerificationTemplate,
   type EmailTemplate,
 } from "./templates";
 
-type EmailResult = { sent: true } | { sent: false; reason: "not_configured" | "provider_error" };
+export type EmailResult =
+  | { sent: true; messageId?: string }
+  | { sent: false; reason: "not_configured" | "provider_error" };
 
 export interface EmailProvider {
   sendWaitlistVerification(input: { to: string; verificationUrl: string; name?: string | null }): Promise<EmailResult>;
   sendWaitlistConfirmed(input: { to: string; name?: string | null; referralUrl?: string | null }): Promise<EmailResult>;
+  sendWaitlistAccessInvitation(input: { to: string; invitationUrl: string; name?: string | null }): Promise<EmailResult>;
   sendOrganizationInvitation(input: { to: string; organizationName: string; role: string; invitationUrl: string }): Promise<EmailResult>;
   sendAdminVerificationCode(input: { to: string; code: string; purpose: "login" | "password_reset" }): Promise<EmailResult>;
 }
@@ -39,7 +43,9 @@ class ResendEmailProvider implements EmailProvider {
       cache: "no-store",
     });
 
-    return response.ok ? { sent: true } : { sent: false, reason: "provider_error" };
+    if (!response.ok) return { sent: false, reason: "provider_error" };
+    const body = await response.json().catch(() => null) as { id?: string } | null;
+    return { sent: true, messageId: body?.id };
   }
 
   async sendWaitlistVerification(input: { to: string; verificationUrl: string; name?: string | null }): Promise<EmailResult> {
@@ -48,6 +54,10 @@ class ResendEmailProvider implements EmailProvider {
 
   async sendWaitlistConfirmed(input: { to: string; name?: string | null; referralUrl?: string | null }): Promise<EmailResult> {
     return this.send({ to: input.to, fromOverride: process.env.WAITLIST_FROM_EMAIL, template: waitlistConfirmedTemplate(input) });
+  }
+
+  async sendWaitlistAccessInvitation(input: { to: string; invitationUrl: string; name?: string | null }): Promise<EmailResult> {
+    return this.send({ to: input.to, fromOverride: process.env.WAITLIST_FROM_EMAIL, template: waitlistAccessInvitationTemplate(input) });
   }
 
   async sendOrganizationInvitation(input: { to: string; organizationName: string; role: string; invitationUrl: string }): Promise<EmailResult> {
