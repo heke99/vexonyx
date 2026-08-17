@@ -1,11 +1,24 @@
 import { createHash, randomBytes } from "node:crypto";
-import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createEmailProvider } from "@/lib/email/provider";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const asText = (value: unknown, max: number) => typeof value === "string" ? value.trim().slice(0, max) : "";
+const hash = (value: string) => createHash("sha256").update(value).digest("hex");
+
+function clientIp(request: Request) {
+  return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+    || request.headers.get("x-real-ip")?.trim()
+    || "unknown";
+}
+
+function accepted() {
+  return NextResponse.json({
+    ok: true,
+    status: "received",
+    message: "If this address still needs verification, we'll email a link shortly. If it's already on the list, no action is required.",
+  }, { status: 202, headers: { "cache-control": "no-store" } });
+}
 
 export async function POST(request: Request) {
   let input: Record<string, unknown>;
@@ -18,6 +31,9 @@ export async function POST(request: Request) {
   const email = asText(input.email, 320).toLowerCase();
   if (!emailPattern.test(email)) return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
 
+  // Quietly absorb automated form fills. Real users never interact with this field.
+  if (asText(input.website, 200)) return accepted();
+
   const audience = asText(input.signup_type, 20) === "company" ? "company" : "individual";
   const name = asText(input.name, 120) || null;
   const company = audience === "company" ? asText(input.company, 160) || null : null;
@@ -26,12 +42,31 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Enter your company or team name." }, { status: 400 });
   }
 
-  const idempotencyKey = request.headers.get("idempotency-key")?.slice(0, 160) ?? crypto.randomUUID();
-  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+  const admin = createAdminClient();
+  if (!admin) return NextResponse.json({ error: "Unable to join right now." }, { status: 503 });
 
-  const { data, error } = await supabase.schema("launch").rpc("join_waitlist", {
+  const ipHash = hash(`waitlist-ip-v1:${clientIp(request)}`);
+  const emailHash = hash(`waitlist-email-v1:${email}`);
+  const limited = await admin.schema("launch").rpc("check_waitlist_rate_limit", {
+    p_ip_hash: ipHash,
+    p_email_hash: emailHash,
+  });
+  if (limited.error) return NextResponse.json({ error: "Unable to join right now." }, { status: 500 });
+  const limitRow = Array.isArray(limited.data) ? limited.data[0] : limited.data;
+  if (limitRow?.ip_limited) {
+    const retryAfter = Math.max(1, Number(limitRow.retry_after_seconds ?? 60));
+    return NextResponse.json({ error: "Too many attempts. Try again shortly." }, {
+      status: 429,
+      headers: { "retry-after": String(retryAfter), "cache-control": "no-store" },
+    });
+  }
+
+  // Per-email throttling is intentionally indistinguishable from a normal submission.
+  // This prevents an attacker from using response differences to enumerate waitlist membership.
+  if (limitRow?.email_limited) return accepted();
+
+  const idempotencyKey = request.headers.get("idempotency-key")?.slice(0, 160) ?? crypto.randomUUID();
+  const joined = await admin.schema("launch").rpc("join_waitlist", {
     p_email: email,
     p_name: name,
     p_company: company,
@@ -41,44 +76,28 @@ export async function POST(request: Request) {
     p_referral_code: asText(input.ref, 40) || null,
     p_idempotency_key: idempotencyKey,
   });
+  if (joined.error) return NextResponse.json({ error: "Unable to join right now." }, { status: 500 });
 
-  if (error) {
-    const status = error.message.includes("rate_limited") ? 429 : 500;
-    return NextResponse.json({ error: status === 429 ? "Too many attempts. Try again shortly." : "Unable to join right now." }, { status });
-  }
-
-  const row = Array.isArray(data) ? data[0] : data;
+  const row = Array.isArray(joined.data) ? joined.data[0] : joined.data;
   const entryId = row?.entry_id as string | undefined;
   const entryStatus = String(row?.status ?? "pending_verification");
   if (!entryId) return NextResponse.json({ error: "Unable to join right now." }, { status: 500 });
 
-  if (["verified", "invited", "converted"].includes(entryStatus)) {
-    return NextResponse.json({ ok: true, status: entryStatus, verified: true, referralCode: row?.referral_code ?? null }, { status: 200 });
+  if (entryStatus === "pending_verification") {
+    const token = randomBytes(32).toString("base64url");
+    const tokenHash = hash(token);
+    const verifyUrl = new URL("/api/v1/waitlist/verify", request.url);
+    verifyUrl.searchParams.set("entry", entryId);
+    verifyUrl.searchParams.set("token", token);
+
+    const prepared = await admin.schema("launch").rpc("prepare_waitlist_verification_email", {
+      p_entry_id: entryId,
+      p_token_hash: tokenHash,
+      p_verification_url: verifyUrl.toString(),
+    });
+    if (prepared.error) return NextResponse.json({ error: "Unable to join right now." }, { status: 500 });
   }
 
-  const admin = createAdminClient();
-  if (!admin) {
-    return NextResponse.json({ ok: true, status: "pending_verification", verified: false, verificationDelivery: "not_configured" }, { status: 202 });
-  }
-
-  const token = randomBytes(32).toString("base64url");
-  const tokenHash = createHash("sha256").update(token).digest("hex");
-  const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
-  const now = new Date().toISOString();
-
-  await admin.schema("launch").from("waitlist_verification_tokens").update({ consumed_at: now }).eq("entry_id", entryId).is("consumed_at", null);
-  const { error: tokenError } = await admin.schema("launch").from("waitlist_verification_tokens").insert({ entry_id: entryId, token_hash: tokenHash, expires_at: expiresAt });
-  if (tokenError) return NextResponse.json({ error: "Unable to prepare email verification." }, { status: 500 });
-
-  const verifyUrl = new URL("/api/v1/waitlist/verify", request.url);
-  verifyUrl.searchParams.set("entry", entryId);
-  verifyUrl.searchParams.set("token", token);
-  const delivery = await createEmailProvider().sendWaitlistVerification({ to: email, verificationUrl: verifyUrl.toString(), name });
-
-  return NextResponse.json({
-    ok: true,
-    status: "pending_verification",
-    verified: false,
-    verificationDelivery: delivery.sent ? "sent" : delivery.reason,
-  }, { status: delivery.sent ? 201 : 202 });
+  // Never reveal whether the address was new, already verified, invited, converted, or blocked.
+  return accepted();
 }
