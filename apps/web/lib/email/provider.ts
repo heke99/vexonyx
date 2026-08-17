@@ -7,7 +7,9 @@ import {
   type EmailTemplate,
 } from "./templates";
 
-type EmailResult = { sent: true } | { sent: false; reason: "not_configured" | "provider_error" };
+export type EmailResult =
+  | { sent: true; messageId?: string }
+  | { sent: false; reason: "not_configured" | "provider_error" };
 
 export interface EmailProvider {
   sendWaitlistVerification(input: { to: string; verificationUrl: string; name?: string | null }): Promise<EmailResult>;
@@ -39,7 +41,9 @@ class ResendEmailProvider implements EmailProvider {
       cache: "no-store",
     });
 
-    return response.ok ? { sent: true } : { sent: false, reason: "provider_error" };
+    if (!response.ok) return { sent: false, reason: "provider_error" };
+    const body = await response.json().catch(() => null) as { id?: string } | null;
+    return { sent: true, messageId: body?.id };
   }
 
   async sendWaitlistVerification(input: { to: string; verificationUrl: string; name?: string | null }): Promise<EmailResult> {
