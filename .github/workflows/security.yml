@@ -1,0 +1,207 @@
+name: Security
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  SEMGREP_VERSION: "1.173.0"
+  OSV_SCANNER_VERSION: "2.5.1"
+  TRIVY_VERSION: "0.74.0"
+
+jobs:
+  action-pinning:
+    name: GitHub Actions supply-chain gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Require immutable third-party action refs
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import pathlib
+          import re
+          import sys
+
+          failures = []
+          uses_re = re.compile(r"^\s*-?\s*uses:\s*([^\s#]+)")
+          sha_re = re.compile(r"^[0-9a-f]{40}$")
+
+          for path in sorted(pathlib.Path('.github/workflows').glob('*.y*ml')):
+              for lineno, line in enumerate(path.read_text(encoding='utf-8').splitlines(), 1):
+                  match = uses_re.match(line)
+                  if not match:
+                      continue
+                  target = match.group(1)
+                  if target.startswith('./'):
+                      continue
+                  if target.startswith('docker://'):
+                      failures.append(f"{path}:{lineno}: docker action must be reviewed/pinned by digest: {target}")
+                      continue
+                  if '@' not in target:
+                      failures.append(f"{path}:{lineno}: action has no ref: {target}")
+                      continue
+                  _, ref = target.rsplit('@', 1)
+                  if not sha_re.fullmatch(ref):
+                      failures.append(f"{path}:{lineno}: action ref is mutable: {target}")
+
+          if failures:
+              print('\n'.join(failures), file=sys.stderr)
+              raise SystemExit(1)
+          print('All workflow actions are pinned to full immutable commit SHAs.')
+          PY
+
+  semgrep:
+    name: Semgrep SAST
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Install pinned Semgrep
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv /tmp/vexonyx-semgrep
+          /tmp/vexonyx-semgrep/bin/python -m pip install --disable-pip-version-check --no-input "semgrep==${SEMGREP_VERSION}"
+          /tmp/vexonyx-semgrep/bin/semgrep --version
+      - name: Generate Semgrep SARIF
+        shell: bash
+        run: /tmp/vexonyx-semgrep/bin/semgrep scan --config .semgrep.yml --sarif --output semgrep.sarif .
+      - name: Block high-confidence Semgrep findings
+        shell: bash
+        run: /tmp/vexonyx-semgrep/bin/semgrep scan --config .semgrep.yml --error --severity ERROR .
+      - name: Upload Semgrep SARIF
+        if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        uses: github/codeql-action/upload-sarif@f3712979fa5f215279b101dd0a2e3bdfb4353324 # v3
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+
+  codeql:
+    name: CodeQL JavaScript/TypeScript
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@f3712979fa5f215279b101dd0a2e3bdfb4353324 # v3
+        with:
+          languages: javascript-typescript
+          queries: security-extended
+      - name: Analyze with CodeQL
+        uses: github/codeql-action/analyze@f3712979fa5f215279b101dd0a2e3bdfb4353324 # v3
+        with:
+          category: /language:javascript-typescript
+
+  osv:
+    name: OSV dependency vulnerabilities
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Install verified OSV-Scanner binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --show-error --silent --location \
+            "https://github.com/google/osv-scanner/releases/download/v${OSV_SCANNER_VERSION}/osv-scanner_linux_amd64" \
+            --output osv-scanner
+          echo "f9f25499a2c8cc367b3af45df2ea7eeca7fbccceab9c35079968f4b3652194be  osv-scanner" | sha256sum --check --strict
+          chmod +x osv-scanner
+          ./osv-scanner --version
+      - name: Scan lockfiles and dependencies
+        shell: bash
+        run: ./osv-scanner scan source --recursive --format sarif --output-file osv.sarif .
+      - name: Upload OSV SARIF
+        if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        uses: github/codeql-action/upload-sarif@f3712979fa5f215279b101dd0a2e3bdfb4353324 # v3
+        with:
+          sarif_file: osv.sarif
+          category: osv-scanner
+
+  trivy:
+    name: Trivy vulnerabilities, secrets and misconfiguration
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Install verified Trivy binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          curl --fail --show-error --silent --location \
+            "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/${archive}" \
+            --output "${archive}"
+          echo "2ae6fe3ee734b7fdf11335663e18c75ea12dccc76062f09f164a3b0f8be4371a  ${archive}" | sha256sum --check --strict
+          tar -xzf "${archive}" trivy
+          ./trivy --version
+      - name: Scan repository filesystem
+        shell: bash
+        run: |
+          ./trivy fs \
+            --scanners vuln,secret,misconfig \
+            --severity HIGH,CRITICAL \
+            --exit-code 1 \
+            --format sarif \
+            --output trivy.sarif \
+            --skip-dirs .git \
+            --skip-dirs node_modules \
+            .
+      - name: Upload Trivy SARIF
+        if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        uses: github/codeql-action/upload-sarif@f3712979fa5f215279b101dd0a2e3bdfb4353324 # v3
+        with:
+          sarif_file: trivy.sarif
+          category: trivy
+
+  scorecard:
+    name: OpenSSF Scorecard
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Run Scorecard
+        uses: ossf/scorecard-action@2d1146689b8cda280b9bc96326124645441f03bc # v2.4.4
+        with:
+          results_file: scorecard.sarif
+          results_format: sarif
+          publish_results: false
+      - name: Upload Scorecard SARIF
+        uses: github/codeql-action/upload-sarif@f3712979fa5f215279b101dd0a2e3bdfb4353324 # v3
+        with:
+          sarif_file: scorecard.sarif
+          category: openssf-scorecard
