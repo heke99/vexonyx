@@ -6,9 +6,6 @@ import styles from "./waitlist-form.module.css";
 type State = {
   kind: "idle" | "loading" | "success" | "error";
   message?: string;
-  verified?: boolean;
-  referral?: string;
-  verificationDelivery?: string;
 };
 
 type SignupType = "individual" | "company";
@@ -29,20 +26,13 @@ export function WaitlistForm({ compact = false, referralCode }: { compact?: bool
         headers: { "content-type": "application/json", "idempotency-key": crypto.randomUUID() },
         body: JSON.stringify(Object.fromEntries(data.entries())),
       });
-      const payload = await response.json() as { ok?: boolean; verified?: boolean; referralCode?: string; verificationDelivery?: string; error?: string };
+      const payload = await response.json() as { ok?: boolean; message?: string; error?: string };
       if (!response.ok && response.status !== 202) throw new Error(payload.error ?? "Unable to join right now.");
       form.reset();
       setSignupType("individual");
       setState({
         kind: "success",
-        verified: payload.verified,
-        referral: payload.referralCode,
-        verificationDelivery: payload.verificationDelivery,
-        message: payload.verified
-          ? "Your VEXONYX waitlist email is already verified."
-          : payload.verificationDelivery === "sent"
-            ? "Check your email to finish joining the VEXONYX waitlist."
-            : "You're registered. Email verification is not available yet.",
+        message: payload.message ?? "If this address still needs verification, we'll email a link shortly. If it's already on the list, no action is required.",
       });
     } catch (error) {
       setState({ kind: "error", message: error instanceof Error ? error.message : "Unable to join right now." });
@@ -54,12 +44,8 @@ export function WaitlistForm({ compact = false, referralCode }: { compact?: bool
       <div className="form-success" role="status">
         <span>✓</span>
         <div>
-          <strong>{state.message}</strong>
-          <p>{state.verified && state.referral
-            ? `Referral code: ${state.referral}`
-            : state.verificationDelivery === "sent"
-              ? "The verification link expires in 30 minutes. Your referral link appears after verification."
-              : "Your registration remains pending until email verification is enabled."}</p>
+          <strong>Request received.</strong>
+          <p>{state.message}</p>
         </div>
       </div>
     );
@@ -98,10 +84,14 @@ export function WaitlistForm({ compact = false, referralCode }: { compact?: bool
         </>
       )}
 
+      <label aria-hidden="true" style={{ position: "absolute", left: "-10000px", width: 1, height: 1, overflow: "hidden" }}>
+        <span>Website</span>
+        <input name="website" tabIndex={-1} autoComplete="off" />
+      </label>
       {referralCode ? <input type="hidden" name="ref" value={referralCode} /> : null}
       <button className="button" disabled={state.kind === "loading"} type="submit">{state.kind === "loading" ? "Joining…" : "Join the waitlist"}</button>
       {state.kind === "error" ? <p className="form-error" role="alert">{state.message}</p> : null}
-      <p className="form-note">Individuals and companies are both welcome. Verify your email to activate your place and referral link. We process the information you submit to manage and secure the waitlist as described in our <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "underline" }}>Privacy Notice</a>.</p>
+      <p className="form-note">Individuals and companies are both welcome. If this address is new or still pending, we&apos;ll email a verification link. We intentionally do not reveal whether an address is already registered. We process the information you submit to manage and secure the waitlist as described in our <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "underline" }}>Privacy Notice</a>.</p>
     </form>
   );
 }
