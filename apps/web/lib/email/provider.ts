@@ -2,7 +2,6 @@ import "server-only";
 import {
   adminVerificationCodeTemplate,
   organizationInvitationTemplate,
-  waitlistAccessInvitationTemplate,
   waitlistConfirmedTemplate,
   waitlistVerificationTemplate,
   type EmailTemplate,
@@ -15,7 +14,6 @@ export type EmailResult =
 export interface EmailProvider {
   sendWaitlistVerification(input: { to: string; verificationUrl: string; name?: string | null }): Promise<EmailResult>;
   sendWaitlistConfirmed(input: { to: string; name?: string | null; referralUrl?: string | null }): Promise<EmailResult>;
-  sendWaitlistAccessInvitation(input: { to: string; invitationUrl: string; name?: string | null }): Promise<EmailResult>;
   sendOrganizationInvitation(input: { to: string; organizationName: string; role: string; invitationUrl: string }): Promise<EmailResult>;
   sendAdminVerificationCode(input: { to: string; code: string; purpose: "login" | "password_reset" }): Promise<EmailResult>;
 }
@@ -54,10 +52,6 @@ class ResendEmailProvider implements EmailProvider {
 
   async sendWaitlistConfirmed(input: { to: string; name?: string | null; referralUrl?: string | null }): Promise<EmailResult> {
     return this.send({ to: input.to, fromOverride: process.env.WAITLIST_FROM_EMAIL, template: waitlistConfirmedTemplate(input) });
-  }
-
-  async sendWaitlistAccessInvitation(input: { to: string; invitationUrl: string; name?: string | null }): Promise<EmailResult> {
-    return this.send({ to: input.to, fromOverride: process.env.WAITLIST_FROM_EMAIL, template: waitlistAccessInvitationTemplate(input) });
   }
 
   async sendOrganizationInvitation(input: { to: string; organizationName: string; role: string; invitationUrl: string }): Promise<EmailResult> {
