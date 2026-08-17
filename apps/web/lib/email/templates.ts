@@ -58,6 +58,25 @@ export function waitlistConfirmedTemplate(input: { name?: string | null; referra
   };
 }
 
+export function waitlistAccessInvitationTemplate(input: { invitationUrl: string; name?: string | null }): EmailTemplate {
+  const greeting = input.name ? `Hi ${escapeHtml(input.name)},` : "Hi,";
+  const preview = "Your VEXONYX private-beta access is ready.";
+  return {
+    subject: "Your VEXONYX access is ready",
+    preview,
+    text: `${input.name ? `Hi ${input.name},\n\n` : ""}Your VEXONYX private-beta access is ready. Create your account using this same verified waitlist email address:\n\n${input.invitationUrl}\n\nThis access link expires in seven days and can be used once. If you did not join the VEXONYX waitlist, contact ${CONTACT}.`,
+    html: layout({
+      preview,
+      eyebrow: "PRIVATE BETA · ACCESS",
+      title: "Your access is ready",
+      body: `<p style="margin:0 0 12px;">${greeting}</p><p style="margin:0;">You can now create your VEXONYX account. This invitation is bound to the same email address you verified on the waitlist, so your waitlist record and product account stay connected without creating a duplicate identity.</p>`,
+      ctaLabel: "Create my VEXONYX account",
+      ctaUrl: input.invitationUrl,
+      footnote: "This private-beta access link expires in seven days and can be used once. Do not forward it.",
+    }),
+  };
+}
+
 export function organizationInvitationTemplate(input: { organizationName: string; role: string; invitationUrl: string }): EmailTemplate {
   const organization = escapeHtml(input.organizationName);
   const role = escapeHtml(input.role.replaceAll("organization_", "").replaceAll("_", " "));
