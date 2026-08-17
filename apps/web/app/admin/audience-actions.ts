@@ -1,5 +1,6 @@
 "use server";
 
+import { createHash, randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { requireSuperadmin } from "@/lib/admin/guard";
 
@@ -49,5 +50,28 @@ export async function createBroadcastDraft(formData:FormData){
   }).select("id").single();
   if(error)throw error;
   await audit(admin,userId,"marketing.broadcast_draft_created","broadcast",data.id,{subject,lifecycle_stage:lifecycleStage});
+  revalidatePath("/admin/audience");
+}
+
+export async function inviteWaitlistEntry(formData:FormData){
+  const {admin,userId}=await requireSuperadmin();
+  const entryId=text(formData,"entry_id",64);
+  if(!/^[0-9a-f-]{36}$/i.test(entryId))throw new Error("Invalid waitlist entry");
+
+  const token=randomBytes(32).toString("base64url");
+  const tokenHash=createHash("sha256").update(token).digest("hex");
+  const origin=(process.env.NEXT_PUBLIC_APP_URL||"https://www.vexonyx.com").replace(/\/$/,"");
+  const invitationUrl=new URL("/waitlist/access",origin);
+  invitationUrl.searchParams.set("entry",entryId);
+  invitationUrl.searchParams.set("token",token);
+
+  const issued=await admin.schema("launch").rpc("issue_waitlist_invitation",{
+    p_entry_id:entryId,
+    p_token_hash:tokenHash,
+    p_invitation_url:invitationUrl.toString(),
+  });
+  if(issued.error)throw new Error(issued.error.message.includes("auth_user_already_exists")?"This email already has a VEXONYX account.":"Unable to issue waitlist invitation.");
+  const row=Array.isArray(issued.data)?issued.data[0]:issued.data;
+  await audit(admin,userId,"waitlist.invitation_issued","waitlist_entry",entryId,{invitation_id:row?.invitation_id??null,delivery:"queued"});
   revalidatePath("/admin/audience");
 }
