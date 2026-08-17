@@ -54,7 +54,7 @@ export async function POST(request: Request) {
       const deliveryQuery = await admin
         .schema("launch")
         .from("waitlist_email_deliveries")
-        .select("id,entry_id,invitation_id,kind,recipient,payload,status,max_attempts,expires_at")
+        .select("id,kind,recipient,payload,status,max_attempts,expires_at")
         .eq("id", deliveryId)
         .maybeSingle();
       if (deliveryQuery.error || !deliveryQuery.data) throw new Error("waitlist_email_delivery_not_found");
@@ -113,14 +113,6 @@ export async function POST(request: Request) {
           name: asOptionalText(payload.name),
           referralUrl: asOptionalText(payload.referralUrl),
         });
-      } else if (delivery.kind === "access_invitation") {
-        const invitationUrl = asOptionalText(payload.invitationUrl);
-        if (!invitationUrl) throw new Error("invitation_url_missing");
-        sendResult = await provider.sendWaitlistAccessInvitation({
-          to: delivery.recipient,
-          invitationUrl,
-          name: asOptionalText(payload.name),
-        });
       } else {
         throw new Error("unsupported_waitlist_email_kind");
       }
@@ -136,10 +128,6 @@ export async function POST(request: Request) {
           updated_at: now,
         }).eq("id", deliveryId);
         if (updated.error) throw updated.error;
-
-        if (delivery.kind === "access_invitation" && delivery.invitation_id) {
-          await admin.schema("launch").from("waitlist_invitations").update({ status: "sent" }).eq("id", delivery.invitation_id).eq("status", "created");
-        }
 
         const finished = await admin.schema("operations").rpc("finish_job", {
           p_job_id: jobId,
