@@ -42,10 +42,16 @@ rules:
       cwe: CWE-78
 
   - id: vexonyx-review-dangerously-set-inner-html
-    languages: [javascript, typescript]
+    languages: [generic]
     severity: WARNING
     message: Review dangerouslySetInnerHTML and prove the value is trusted or sanitized.
-    pattern: dangerouslySetInnerHTML={{__html: $VALUE}}
+    pattern-regex: 'dangerouslySetInnerHTML\s*=\s*\{\{'
+    paths:
+      include:
+        - '*.js'
+        - '*.jsx'
+        - '*.ts'
+        - '*.tsx'
     metadata:
       category: security
       cwe: CWE-79
