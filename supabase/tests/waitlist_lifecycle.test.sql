@@ -36,9 +36,8 @@ select is((select status from launch.waitlist_entries where id=(select entry_id 
 
 select ok(to_regprocedure('launch.issue_waitlist_invitation(uuid,text,text)') is null,'Waitlist access invitation function does not exist');
 select ok(to_regprocedure('launch.inspect_waitlist_invitation(uuid,text)') is null,'Waitlist account activation inspection function does not exist');
-select unlike(
-  pg_get_functiondef('public.vexonyx_block_auth_user_creation_waitlist()'::regprocedure),
-  '%vexonyx_internal_provisioning%',
+select ok(
+  position('vexonyx_internal_provisioning' in pg_get_functiondef('public.vexonyx_block_auth_user_creation_waitlist()'::regprocedure))=0,
   'Auth creation trigger has no waitlist provisioning bypass'
 );
 
