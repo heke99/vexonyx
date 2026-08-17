@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createEmailProvider } from "@/lib/email/provider";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -34,21 +33,12 @@ export async function GET(request: Request) {
   destination.searchParams.set("status", "verified");
   if (referralCode) destination.searchParams.set("ref", referralCode);
 
-  const { data: waitlistEntry } = await admin
-    .schema("launch")
-    .from("waitlist_entries")
-    .select("email,name")
-    .eq("id", entry)
-    .maybeSingle();
-
-  if (waitlistEntry?.email) {
-    const referralUrl = referralCode ? new URL(`/waitlist?ref=${encodeURIComponent(referralCode)}`, request.url).toString() : null;
-    await createEmailProvider().sendWaitlistConfirmed({
-      to: String(waitlistEntry.email),
-      name: waitlistEntry.name ? String(waitlistEntry.name) : null,
-      referralUrl,
-    });
-  }
+  const referralUrl = referralCode ? new URL(`/waitlist?ref=${encodeURIComponent(referralCode)}`, request.url).toString() : null;
+  const queued = await admin.schema("launch").rpc("enqueue_waitlist_confirmation", {
+    p_entry_id: entry,
+    p_referral_url: referralUrl,
+  });
+  if (queued.error) console.error("waitlist_confirmation_queue_failed", { entry, code: queued.error.code });
 
   return NextResponse.redirect(destination, 303);
 }
