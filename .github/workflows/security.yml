@@ -80,6 +80,9 @@ jobs:
           python3 -m venv /tmp/vexonyx-semgrep
           /tmp/vexonyx-semgrep/bin/python -m pip install --disable-pip-version-check --no-input "semgrep==${SEMGREP_VERSION}"
           /tmp/vexonyx-semgrep/bin/semgrep --version
+      - name: Validate Semgrep rules
+        shell: bash
+        run: /tmp/vexonyx-semgrep/bin/semgrep scan --validate --config .semgrep.yml
       - name: Generate Semgrep SARIF
         shell: bash
         run: /tmp/vexonyx-semgrep/bin/semgrep scan --config .semgrep.yml --sarif --output semgrep.sarif .
@@ -202,6 +205,7 @@ jobs:
             --output trivy.sarif \
             --skip-dirs .git \
             --skip-dirs node_modules \
+            --skip-files .agents/skills/scan-secrets/evals/files/_shared/secrets.env \
             .
           code=$?
           set -e
@@ -215,6 +219,7 @@ jobs:
               --format table \
               --skip-dirs .git \
               --skip-dirs node_modules \
+              --skip-files .agents/skills/scan-secrets/evals/files/_shared/secrets.env \
               . || true
             echo "::endgroup::"
           elif [ "$code" -ne 0 ]; then
